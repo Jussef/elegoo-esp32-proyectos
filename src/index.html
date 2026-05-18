@@ -227,10 +227,12 @@ const components = [
   { name: "0.96\" OLED Display", qty: "1PC", icon: "🖥️", cat: "display", projects: [
     { title: "Reloj digital", desc: "Muestra hora, fecha y temperatura en la pantalla OLED.", diff: "facil", parts: "OLED, DHT11", link: "proyectos-oled/1-reloj_digital.html" },
     { title: "Medidor de distancia", desc: "Muestra en tiempo real la distancia medida por el sensor ultrasónico.", diff: "facil", parts: "OLED, Ultrasonic Sensor", link: "proyectos-oled/2-medidor_distancia.html" },
-    { title: "Snake", desc: "El clásico juego Snake con joystick y pantalla OLED. El juego se acelera con cada comida.", diff: "avanzado", parts: "OLED, Joystick", link: "proyectos-oled/3-snake.html" }
+    { title: "Snake", desc: "El clásico juego Snake con joystick y pantalla OLED. El juego se acelera con cada comida.", diff: "avanzado", parts: "OLED, Joystick", link: "proyectos-oled/3-snake.html" },
+    { title: "Nivel Digital", desc: "Muestra ángulos Pitch y Roll en tiempo real con barras indicadoras. Detecta cuando está nivelado.", diff: "facil", parts: "OLED, GY-6500", link: "proyectos-oled/4-nivel_digital.html" },
+    { title: "Calculadora", desc: "Calculadora de 4 operaciones con teclado matricial 4×4. Muestra la expresión y el resultado en pantalla.", diff: "medio", parts: "OLED, Keypad 4×4", link: "proyectos-oled/5-calculadora.html" }
   ]},
   { name: "GY-6500 Module", qty: "1PC", icon: "📐", cat: "sensor", projects: [
-    { title: "Nivel digital", desc: "Muestra el ángulo de inclinación en la pantalla OLED.", diff: "facil", parts: "GY-6500, OLED" },
+    { title: "Nivel digital", desc: "Muestra el ángulo de inclinación en la pantalla OLED.", diff: "facil", parts: "GY-6500, OLED", link: "proyectos-oled/4-nivel_digital.html" },
     { title: "Gimbal simple", desc: "Usa el giroscopio para controlar servos y mantener estable una plataforma.", diff: "avanzado", parts: "GY-6500, Servo SG90" },
     { title: "Controlador de gestos", desc: "Controla el color del LED RGB según la orientación del módulo.", diff: "medio", parts: "GY-6500, RGB LED" }
   ]},
@@ -298,7 +300,7 @@ const components = [
   ]},
   { name: "Membrane Switch Keypad", qty: "1PC", icon: "⌨️", cat: "control", projects: [
     { title: "Caja fuerte con PIN", desc: "Introduce un PIN de 4 dígitos para abrir la cerradura.", diff: "medio", parts: "Keypad, Servo SG90, OLED" },
-    { title: "Calculadora", desc: "Calculadora básica con teclado matricial y display OLED.", diff: "medio", parts: "Keypad, OLED" },
+    { title: "Calculadora", desc: "Calculadora básica con teclado matricial y display OLED.", diff: "medio", parts: "Keypad, OLED", link: "proyectos-oled/5-calculadora.html" },
     { title: "Sistema de menú", desc: "Navega entre opciones de configuración con el teclado.", diff: "facil", parts: "Keypad, OLED" }
   ]},
   { name: "Button + Potenciómetro", qty: "5 / 1PC", icon: "🔘", cat: "control", projects: [
