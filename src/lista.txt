@@ -1,0 +1,55 @@
+KIT ELEGOO — LISTA COMPLETA DE COMPONENTES
+==========================================
+
+MICROCONTROLADOR Y COMUNICACIÓN
+- ESP-32 Board .......................... 1 PC
+- RC522 RFID Module ..................... 1 PC
+- IR Receiver Module .................... 1 PC
+- IR Emission Module .................... 1 PC
+- Remote Control ........................ 1 PC
+
+PANTALLAS
+- 0.96" OLED Display Module ............. 1 PC
+- 1 Digit 7-Segment Display ............. 1 PC
+- 4 Digit 7-Segment Display ............. 1 PC
+
+SENSORES
+- GY-6500 Module (giroscopio/acelerómetro) 1 PC
+- DHT11 Temperature & Humidity Module ... 1 PC
+- Ultrasonic Sensor ..................... 1 PC
+- HC-SR501 PIR Motion Sensor Module ..... 1 PC
+- Tilt Ball Switch ...................... 1 PC
+- Thermistor ............................ 1 PC
+- Photoresistor (LDR) ................... 2 PCS
+
+MOTORES Y ACTUADORES
+- ULN2003 Stepper Motor Driver .......... 1 PC
+- Stepper Motor ......................... 1 PC
+- Servo Motor SG90 ...................... 1 PC
+- Fan Blade + Motor 3-6V ................ 1 PC
+- 5V Relay .............................. 1 PC
+
+CONTROL E INTERFAZ
+- Joystick Module ....................... 1 PC
+- Membrane Switch Module (keypad 4x4) ... 1 PC
+- Button ................................ 5 PCS
+- Potenciómetro 10K ..................... 1 PC
+
+AUDIO
+- Active Buzzer ......................... 1 PC
+- Passive Buzzer ........................ 1 PC
+
+ELECTRÓNICA DISCRETA Y ALIMENTACIÓN
+- Power Supply Module ................... 1 PC
+- 74HC595 IC ............................ 1 PC
+- L293D Motor Driver IC ................. 1 PC
+- NPN Transistor PN2222 ................. 2 PCS
+- Diode Rectifier ....................... 2 PCS
+- Resistor .............................. 120 PCS
+- LED (varios colores) .................. 25 PCS
+- RGB LED ............................... 2 PCS
+- Protoboard 400 tie-points ............. 2 PCS
+- Female-to-Male Dupont Wire ............ 10 PCS
+- Protoboard Jumper Wire ................ 65 PCS
+- Cable USB A to C ...................... 1 PC
+- 9V Battery + Snap-on Connector Clip ... 1 PC

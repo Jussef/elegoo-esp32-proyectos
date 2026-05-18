@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit Elegoo — Explorador de Proyectos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f0f13;
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 18px 24px;
+  }
+
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .header-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(34,211,238,0.15);
+    border: 1px solid rgba(34,211,238,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  #search {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 16px;
+  }
+  #search::placeholder { color: rgba(255,255,255,0.25); }
+  #search:focus { border-color: rgba(34,211,238,0.5); background: rgba(255,255,255,0.07); }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.25); }
+  .filter-btn.active {
+    background: #22d3ee;
+    border-color: #22d3ee;
+    color: #0f0f13;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: left;
+  }
+  .card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+  .card.selected { background: rgba(255,255,255,0.09); border-color: rgba(34,211,238,0.55); }
+
+  .card-icon { font-size: 26px; margin-bottom: 10px; }
+  .card-name { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 4px; }
+  .card-qty { font-size: 11px; color: rgba(255,255,255,0.32); margin-bottom: 10px; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .pill-sensor { background: #d1fae5; color: #065f46; }
+  .pill-motor { background: #fef3c7; color: #92400e; }
+  .pill-display { background: #ede9fe; color: #5b21b6; }
+  .pill-comunicacion { background: #e0f2fe; color: #075985; }
+  .pill-control { background: #ffedd5; color: #9a3412; }
+  .pill-electronica { background: #f1f5f9; color: #475569; }
+  .pill-audio { background: #fce7f3; color: #9d174d; }
+
+  .panel {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .panel-icon { font-size: 32px; }
+  .panel-name { font-size: 16px; font-weight: 700; }
+  .panel-meta { font-size: 12px; color: rgba(255,255,255,0.38); margin-top: 3px; }
+
+  .projects {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    padding: 20px 24px;
+  }
+
+  .project {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .proj-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .proj-title { font-size: 13px; font-weight: 600; line-height: 1.4; }
+
+  .diff {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .diff-facil { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); }
+  .diff-medio { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+  .diff-avanzado { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+
+  .proj-desc { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.55; }
+
+  .proj-parts {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 11px;
+    color: rgba(34,211,238,0.65);
+    line-height: 1.5;
+  }
+  .proj-parts span { color: rgba(255,255,255,0.25); }
+  .proj-open { color: rgba(34,211,238,0.7); font-style: normal; }
+  .project-link { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  .project-link:hover { background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.3); }
+
+  .empty { text-align: center; padding: 40px; color: rgba(255,255,255,0.25); font-size: 14px; grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">🛠️</div>
+    <div>
+      <div class="header-title">Kit Elegoo — Explorador de Proyectos</div>
+      <div class="header-sub" id="subtitle">Cargando...</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <input type="text" id="search" placeholder="Buscar componente...">
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+  <div id="panel"></div>
+</main>
+
+<script>
+const components = [
+  { name: "ESP-32 Board", qty: "1PC", icon: "📡", cat: "comunicacion", projects: [
+    { title: "Portal WiFi Cautivo", desc: "Crea tu propio punto de acceso WiFi. Cualquier dispositivo que se conecte ve una página personalizada.", diff: "facil", parts: "Solo ESP-32", link: "proyectos-board/1-wifi_cautivo.html" },
+    { title: "Servidor web con WiFi", desc: "Controla el LED integrado desde cualquier navegador en tu red local. Sin apps, sin cables.", diff: "facil", parts: "ESP-32, LED, Resistor", link: "proyectos-board/2-servidor_web.html" },
+    { title: "Reloj NTP por Internet", desc: "Sincroniza la hora exacta con servidores NTP. Muestra fecha y hora completas en el Monitor Serie.", diff: "facil", parts: "Solo ESP-32", link: "proyectos-board/3-reloj_ntp.html" },
+    { title: "Escáner de Redes WiFi", desc: "Lista todas las redes WiFi cercanas con señal, canal y tipo de cifrado. Se actualiza cada 10 segundos.", diff: "facil", parts: "Solo ESP-32", link: "proyectos-board/4-escaneo_wifi.html" },
+    { title: "Terminal Bluetooth Serial", desc: "Empareja el ESP-32 con tu teléfono y envía comandos por Bluetooth para controlar el LED.", diff: "medio", parts: "Solo ESP-32", link: "proyectos-board/5-bluetooth.html" },
+    { title: "Actualizaciones OTA", desc: "Actualiza el firmware del ESP-32 por WiFi sin cable USB. Ideal para proyectos ya montados.", diff: "medio", parts: "Solo ESP-32", link: "proyectos-board/6-ota.html" }
+  ]},
+  { name: "0.96\" OLED Display", qty: "1PC", icon: "🖥️", cat: "display", projects: [
+    { title: "Reloj digital", desc: "Muestra hora, fecha y temperatura en la pantalla OLED.", diff: "facil", parts: "OLED, DHT11", link: "proyectos-oled/1-reloj_digital.html" },
+    { title: "Medidor de distancia", desc: "Muestra en tiempo real la distancia medida por el sensor ultrasónico.", diff: "facil", parts: "OLED, Ultrasonic Sensor", link: "proyectos-oled/2-medidor_distancia.html" },
+    { title: "Snake", desc: "El clásico juego Snake con joystick y pantalla OLED. El juego se acelera con cada comida.", diff: "avanzado", parts: "OLED, Joystick", link: "proyectos-oled/3-snake.html" }
+  ]},
+  { name: "GY-6500 Module", qty: "1PC", icon: "📐", cat: "sensor", projects: [
+    { title: "Nivel digital", desc: "Muestra el ángulo de inclinación en la pantalla OLED.", diff: "facil", parts: "GY-6500, OLED" },
+    { title: "Gimbal simple", desc: "Usa el giroscopio para controlar servos y mantener estable una plataforma.", diff: "avanzado", parts: "GY-6500, Servo SG90" },
+    { title: "Controlador de gestos", desc: "Controla el color del LED RGB según la orientación del módulo.", diff: "medio", parts: "GY-6500, RGB LED" }
+  ]},
+  { name: "Power Supply Module", qty: "1PC", icon: "🔌", cat: "electronica", projects: [
+    { title: "Fuente regulada", desc: "Provee 3.3V y 5V estables a todos tus circuitos en el protoboard.", diff: "facil", parts: "Power Supply, Protoboard" },
+    { title: "Banco de pruebas", desc: "Alimenta múltiples módulos simultáneamente durante el desarrollo.", diff: "facil", parts: "Power Supply, todos los módulos" }
+  ]},
+  { name: "ULN2003 + Stepper Motor", qty: "1PC c/u", icon: "⚙️", cat: "motor", projects: [
+    { title: "Cerradura automática", desc: "Gira el motor para trabar o destrabar una cerradura con un botón.", diff: "medio", parts: "Stepper, ULN2003, Button" },
+    { title: "Plotter XY simple", desc: "Mueve un lápiz en 2 ejes para dibujar formas programadas.", diff: "avanzado", parts: "Stepper x2, ULN2003 x2" },
+    { title: "Reloj de manecillas", desc: "Motor paso a paso como mecanismo de reloj con control preciso.", diff: "medio", parts: "Stepper, ULN2003, OLED" }
+  ]},
+  { name: "Servo Motor SG90", qty: "1PC", icon: "🦾", cat: "motor", projects: [
+    { title: "Barrera automática", desc: "Sube y baja una barrera cuando se presiona un botón.", diff: "facil", parts: "Servo SG90, Button" },
+    { title: "Brazo robótico", desc: "Controla el ángulo del servo con el potenciómetro en tiempo real.", diff: "facil", parts: "Servo SG90, Potenciómetro" },
+    { title: "Seguidor de luz", desc: "El servo orienta un panel hacia la fuente de luz más intensa.", diff: "medio", parts: "Servo SG90, Photoresistor x2" }
+  ]},
+  { name: "5V Relay", qty: "1PC", icon: "⚡", cat: "control", projects: [
+    { title: "Enchufe inteligente", desc: "Enciende o apaga un dispositivo de 110V/220V con una señal de 5V.", diff: "medio", parts: "5V Relay, ESP-32" },
+    { title: "Temporizador de riego", desc: "Activa una bomba de agua a intervalos programados.", diff: "medio", parts: "5V Relay, ESP-32" },
+    { title: "Alarma con sirena", desc: "Activa una sirena cuando el PIR detecta movimiento.", diff: "facil", parts: "5V Relay, HC-SR501, Active Buzzer" }
+  ]},
+  { name: "IR Receiver & Emitter", qty: "1PC c/u", icon: "🔴", cat: "comunicacion", projects: [
+    { title: "Control remoto universal", desc: "Decodifica señales de cualquier control IR y activa módulos.", diff: "facil", parts: "IR Receiver, Remote Control, LED" },
+    { title: "Barrera de seguridad", desc: "Detecta cuando algo interrumpe el haz infrarrojo.", diff: "facil", parts: "IR Receiver, IR Emitter" },
+    { title: "Control de TV desde ESP-32", desc: "Envía comandos IR a tu televisor programáticamente.", diff: "medio", parts: "IR Emitter, ESP-32" }
+  ]},
+  { name: "Joystick Module", qty: "1PC", icon: "🕹️", cat: "control", projects: [
+    { title: "Control de robot", desc: "Dirige un robot con el joystick: adelante, atrás, giros.", diff: "medio", parts: "Joystick, Motor DC x2, L293D" },
+    { title: "Cursor en OLED", desc: "Mueve un cursor o selecciona opciones en el menú de la pantalla OLED.", diff: "facil", parts: "Joystick, OLED" },
+    { title: "Mini consola de videojuego", desc: "Juego de laberinto o Snake con joystick y pantalla OLED.", diff: "avanzado", parts: "Joystick, OLED" }
+  ]},
+  { name: "DHT11 Temp & Humidity", qty: "1PC", icon: "🌡️", cat: "sensor", projects: [
+    { title: "Estación meteorológica", desc: "Mide temperatura y humedad y las muestra en la pantalla OLED.", diff: "facil", parts: "DHT11, OLED" },
+    { title: "Termostato inteligente", desc: "Activa un ventilador cuando la temperatura supera un umbral.", diff: "medio", parts: "DHT11, Fan Motor, Relay" },
+    { title: "Logger de clima IoT", desc: "Sube los datos a internet cada 10 minutos y los grafica.", diff: "avanzado", parts: "DHT11, ESP-32" }
+  ]},
+  { name: "Ultrasonic Sensor", qty: "1PC", icon: "📏", cat: "sensor", projects: [
+    { title: "Sensor de estacionamiento", desc: "Avisa con buzzer y LED cuando un coche se acerca demasiado.", diff: "facil", parts: "Ultrasonic, Active Buzzer, LED" },
+    { title: "Medidor con display", desc: "Muestra la distancia en cm o pulgadas en la pantalla OLED.", diff: "facil", parts: "Ultrasonic, OLED" },
+    { title: "Robot anticolisión", desc: "El robot se detiene o gira al detectar obstáculos.", diff: "medio", parts: "Ultrasonic, Servo, Motor" }
+  ]},
+  { name: "Fan + Motor 3-6V", qty: "1PC", icon: "🌀", cat: "motor", projects: [
+    { title: "Ventilador automático", desc: "Enciende el fan cuando el DHT11 detecta calor excesivo.", diff: "facil", parts: "Fan Motor, DHT11, Transistor PN2222" },
+    { title: "Anemómetro casero", desc: "Mide velocidad del viento contando las revoluciones del fan.", diff: "medio", parts: "Fan Motor, IR sensor" }
+  ]},
+  { name: "Active & Passive Buzzer", qty: "1PC c/u", icon: "🔊", cat: "audio", projects: [
+    { title: "Piano de 4 teclas", desc: "Cada botón toca una nota diferente con el buzzer pasivo.", diff: "facil", parts: "Passive Buzzer, Button 5PCS" },
+    { title: "Alarma de temperatura", desc: "Suena cuando el DHT11 detecta temperatura peligrosa.", diff: "facil", parts: "Active Buzzer, DHT11" },
+    { title: "Reproductor de melodías", desc: "Toca canciones como Star Wars o Mario con el buzzer pasivo.", diff: "medio", parts: "Passive Buzzer" }
+  ]},
+  { name: "74HC595 + L293D ICs", qty: "1PC c/u", icon: "🔲", cat: "electronica", projects: [
+    { title: "Control de motor DC", desc: "Usa el L293D para controlar velocidad y dirección de un motor.", diff: "medio", parts: "L293D, Fan Motor, Potenciómetro" },
+    { title: "Expansión de salidas", desc: "Controla 8 LEDs con solo 3 pines usando el 74HC595.", diff: "medio", parts: "74HC595, LED 25PCS" }
+  ]},
+  { name: "RC522 RFID Module", qty: "1PC", icon: "💳", cat: "comunicacion", projects: [
+    { title: "Control de acceso", desc: "Abre una cerradura solo con tu tarjeta RFID autorizada.", diff: "medio", parts: "RC522, Servo SG90, Relay" },
+    { title: "Registro de asistencia", desc: "Registra quién pasó y a qué hora usando RFID.", diff: "avanzado", parts: "RC522, ESP-32, OLED" },
+    { title: "Alcancía inteligente", desc: "Muestra cuánto has ahorrado al pasar una moneda con RFID.", diff: "facil", parts: "RC522, OLED" }
+  ]},
+  { name: "HC-SR501 PIR Sensor", qty: "1PC", icon: "👁️", cat: "sensor", projects: [
+    { title: "Luz automática", desc: "Enciende LEDs cuando detecta movimiento.", diff: "facil", parts: "HC-SR501, LED, Relay" },
+    { title: "Alarma de seguridad", desc: "Activa buzzer y envía notificación al celular al detectar movimiento.", diff: "medio", parts: "HC-SR501, ESP-32, Active Buzzer" },
+    { title: "Contador de personas", desc: "Cuenta cuántas veces alguien pasa frente al sensor.", diff: "medio", parts: "HC-SR501, OLED" }
+  ]},
+  { name: "Membrane Switch Keypad", qty: "1PC", icon: "⌨️", cat: "control", projects: [
+    { title: "Caja fuerte con PIN", desc: "Introduce un PIN de 4 dígitos para abrir la cerradura.", diff: "medio", parts: "Keypad, Servo SG90, OLED" },
+    { title: "Calculadora", desc: "Calculadora básica con teclado matricial y display OLED.", diff: "medio", parts: "Keypad, OLED" },
+    { title: "Sistema de menú", desc: "Navega entre opciones de configuración con el teclado.", diff: "facil", parts: "Keypad, OLED" }
+  ]},
+  { name: "Button + Potenciómetro", qty: "5 / 1PC", icon: "🔘", cat: "control", projects: [
+    { title: "Control de brillo LED", desc: "El potenciómetro ajusta el brillo de un LED con PWM.", diff: "facil", parts: "Potenciómetro, LED, Resistor" },
+    { title: "Selección de modos", desc: "Los botones seleccionan diferentes efectos de luz o melodías.", diff: "facil", parts: "Buttons, LED, Passive Buzzer" }
+  ]},
+  { name: "7-Segment Display", qty: "1 + 4 dígitos", icon: "🔢", cat: "display", projects: [
+    { title: "Contador 0-9999", desc: "Cada botón incrementa el contador en el display de 4 dígitos.", diff: "facil", parts: "4-Digit Display, Button, 74HC595" },
+    { title: "Cronómetro", desc: "Inicia, pausa y reinicia un cronómetro con botones.", diff: "medio", parts: "4-Digit Display, Button" },
+    { title: "Dado electrónico", desc: "Al presionar el botón muestra un número aleatorio del 1 al 6.", diff: "facil", parts: "1-Digit Display, Button" }
+  ]},
+  { name: "Tilt Ball Switch", qty: "1PC", icon: "⚖️", cat: "sensor", projects: [
+    { title: "Detector de caída", desc: "Activa una alarma cuando se inclina el dispositivo.", diff: "facil", parts: "Tilt Switch, Active Buzzer" },
+    { title: "Nivel de burbuja digital", desc: "Indica si un objeto está nivelado con LEDs verde y rojo.", diff: "facil", parts: "Tilt Switch, LED, Resistor" }
+  ]},
+  { name: "Remote Control", qty: "1PC", icon: "📺", cat: "comunicacion", projects: [
+    { title: "Control de LEDs RGB", desc: "Cambia colores del LED RGB con los botones del control remoto.", diff: "facil", parts: "Remote, IR Receiver, RGB LED" },
+    { title: "Robot teledirigido", desc: "Controla un robot de 4 ruedas con el control IR.", diff: "avanzado", parts: "Remote, IR Receiver, L293D, Motor" }
+  ]},
+  { name: "Resistores, LEDs, RGB", qty: "120 / 25 / 2PCS", icon: "💡", cat: "electronica", projects: [
+    { title: "Semáforo programable", desc: "LEDs rojo, amarillo y verde simulan un semáforo real.", diff: "facil", parts: "LED, Resistor, Protoboard" },
+    { title: "Efecto de fuego RGB", desc: "El LED RGB parpadea en tonos naranja/rojo simulando fuego.", diff: "facil", parts: "RGB LED, Resistor" },
+    { title: "Visualizador de audio", desc: "LEDs que reaccionan al sonido del micrófono.", diff: "medio", parts: "LED 25PCS, Transistor, Resistor" }
+  ]},
+  { name: "Photoresistor (LDR)", qty: "2PCS", icon: "☀️", cat: "sensor", projects: [
+    { title: "Luz nocturna automática", desc: "Se enciende cuando oscurece y se apaga con la luz del día.", diff: "facil", parts: "LDR, LED, Transistor PN2222, Resistor" },
+    { title: "Seguidor de luz solar", desc: "Dos LDRs orientan un servo hacia la fuente de luz.", diff: "medio", parts: "LDR x2, Servo SG90" }
+  ]},
+  { name: "NPN Transistor PN2222", qty: "2PCS", icon: "🔁", cat: "electronica", projects: [
+    { title: "Switch para motor", desc: "Usa el transistor para controlar el motor con poca corriente.", diff: "medio", parts: "PN2222, Fan Motor, Resistor" },
+    { title: "Oscilador de audio", desc: "Circuito astable que genera tonos sin microcontrolador.", diff: "avanzado", parts: "PN2222 x2, Resistor, Passive Buzzer" }
+  ]},
+  { name: "Thermistor", qty: "1PC", icon: "🌡️", cat: "sensor", projects: [
+    { title: "Termómetro analógico", desc: "Lee la temperatura mediante variación de resistencia.", diff: "facil", parts: "Thermistor, OLED, Resistor" }
+  ]},
+  { name: "9V Battery + Clip", qty: "1PC", icon: "🔋", cat: "electronica", projects: [
+    { title: "Alimentación portátil", desc: "Alimenta tus proyectos sin necesidad de cable USB.", diff: "facil", parts: "9V Battery, Power Module" }
+  ]},
+];
+
+const CATS = [
+  { id: "todo", label: "Todo" },
+  { id: "sensor", label: "Sensores" },
+  { id: "motor", label: "Motores" },
+  { id: "display", label: "Pantallas" },
+  { id: "comunicacion", label: "Comunicación" },
+  { id: "control", label: "Control" },
+  { id: "electronica", label: "Electrónica" },
+  { id: "audio", label: "Audio" },
+];
+
+const CAT_LABELS = Object.fromEntries(CATS.map(c => [c.id, c.label]));
+const DIFF_LABELS = { facil: "Principiante", medio: "Intermedio", avanzado: "Avanzado" };
+
+let activeCat = "todo";
+let selected = null;
+
+document.getElementById("subtitle").textContent = `${components.length} componentes · haz clic en uno para ver qué puedes construir`;
+
+// Build filters
+const filtersEl = document.getElementById("filters");
+CATS.forEach(cat => {
+  const btn = document.createElement("button");
+  btn.className = "filter-btn" + (cat.id === "todo" ? " active" : "");
+  btn.textContent = cat.label;
+  btn.dataset.cat = cat.id;
+  btn.addEventListener("click", () => {
+    activeCat = cat.id;
+    selected = null;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  });
+  filtersEl.appendChild(btn);
+});
+
+document.getElementById("search").addEventListener("input", () => {
+  selected = null;
+  render();
+});
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const filtered = components.filter(c =>
+    (activeCat === "todo" || c.cat === activeCat) &&
+    (!q || c.name.toLowerCase().includes(q))
+  );
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">No se encontraron componentes</div>';
+  } else {
+    filtered.forEach(comp => {
+      const card = document.createElement("div");
+      card.className = "card" + (selected === comp.name ? " selected" : "");
+      card.innerHTML = `
+        <div class="card-icon">${comp.icon}</div>
+        <div class="card-name">${comp.name}</div>
+        <div class="card-qty">${comp.qty}</div>
+        <span class="pill pill-${comp.cat}">${CAT_LABELS[comp.cat]}</span>
+      `;
+      card.addEventListener("click", () => {
+        selected = selected === comp.name ? null : comp.name;
+        render();
+        if (selected) setTimeout(() => document.getElementById("panel").scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  renderPanel();
+}
+
+function renderPanel() {
+  const panel = document.getElementById("panel");
+  if (!selected) { panel.innerHTML = ""; return; }
+  const comp = components.find(c => c.name === selected);
+  if (!comp) { panel.innerHTML = ""; return; }
+
+  panel.innerHTML = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-icon">${comp.icon}</div>
+        <div>
+          <div class="panel-name">${comp.name}</div>
+          <div class="panel-meta">${comp.qty} · ${CAT_LABELS[comp.cat]} · ${comp.projects.length} proyectos disponibles</div>
+        </div>
+      </div>
+      <div class="projects">
+        ${comp.projects.map(p => `
+          <div class="project${p.link ? ' project-link' : ''}" ${p.link ? `onclick="location.href='${p.link}'"` : ''}>
+            <div class="proj-top">
+              <div class="proj-title">${p.title}</div>
+              <span class="diff diff-${p.diff}">${DIFF_LABELS[p.diff]}</span>
+            </div>
+            <div class="proj-desc">${p.desc}</div>
+            <div class="proj-parts"><span>Necesitas: </span>${p.parts}${p.link ? '<span class="proj-open"> — Ver proyecto →</span>' : ''}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>

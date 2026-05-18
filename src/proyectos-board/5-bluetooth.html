@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · Terminal Bluetooth Serial — ESP32</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f13; color: #fff; min-height: 100vh; }
+header { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 24px; position: sticky; top: 0; background: #0f0f13; z-index: 10; }
+.header-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.back { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; }
+.back:hover { color: #22d3ee; }
+.hdiv { color: rgba(255,255,255,0.15); }
+.proj-num { font-size: 11px; font-weight: 700; color: rgba(34,211,238,0.55); letter-spacing: 0.05em; }
+.proj-title { font-size: 15px; font-weight: 700; }
+main { max-width: 820px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 18px; }
+.section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 22px 24px; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(34,211,238,0.6); margin-bottom: 14px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.medio { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+.cat-tag { font-size: 11px; color: rgba(255,255,255,0.35); padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); }
+.desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.7; }
+.comp-list { display: flex; flex-direction: column; gap: 9px; }
+.comp-item { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.cdot { width: 5px; height: 5px; border-radius: 50%; background: #22d3ee; flex-shrink: 0; }
+.cname { color: rgba(255,255,255,0.8); }
+.cqty { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.28); }
+.no-wiring { font-size: 13px; color: rgba(255,255,255,0.4); font-style: italic; }
+.cmd-grid { display: flex; flex-direction: column; gap: 8px; }
+.cmd-item { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px; }
+.cmd-code { font-family: 'Courier New', monospace; font-size: 13px; color: #22d3ee; background: rgba(34,211,238,0.08); padding: 3px 10px; border-radius: 5px; min-width: 60px; text-align: center; flex-shrink: 0; }
+.cmd-desc { font-size: 13px; color: rgba(255,255,255,0.65); }
+.code-box { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.code-header { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; }
+.code-lang { font-size: 11px; color: rgba(255,255,255,0.25); font-family: monospace; }
+.copy-btn { font-size: 11px; color: rgba(34,211,238,0.6); background: none; border: 1px solid rgba(34,211,238,0.15); border-radius: 5px; padding: 3px 10px; cursor: pointer; transition: .15s; }
+.copy-btn:hover { background: rgba(34,211,238,0.08); color: #22d3ee; }
+pre { margin: 0 !important; border-radius: 0 !important; background: #0a0a10 !important; overflow-x: auto; }
+pre code { display: block; padding: 18px 20px; font-size: 12.5px; line-height: 1.6; color: #e2e8f0; font-family: 'Courier New', Consolas, monospace; white-space: pre; }
+code.hljs { font-size: 12.5px !important; line-height: 1.6 !important; padding: 18px 20px !important; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.step { display: flex; gap: 14px; align-items: flex-start; }
+.step-n { width: 26px; height: 26px; border-radius: 50%; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.2); color: #22d3ee; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+.step-text code { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; color: #22d3ee; }
+.note { font-size: 12.5px; color: rgba(255,255,255,0.45); background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: 10px; padding: 12px 16px; line-height: 1.6; margin-top: 14px; }
+.note strong { color: rgba(245,158,11,0.8); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="back" href="../index.html">← Volver</a>
+    <span class="hdiv">/</span>
+    <span class="proj-num">PROYECTO 05</span>
+    <span class="hdiv">/</span>
+    <span class="proj-title">Terminal Bluetooth Serial</span>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge medio">Intermedio</span>
+      <span class="cat-tag">Bluetooth · Inalámbrico</span>
+    </div>
+    <p class="desc">
+      El ESP-32 se empareja con tu teléfono vía Bluetooth Classic y crea un canal de comunicación serial
+      inalámbrico. Desde una app de terminal en el celular puedes enviar comandos para controlar el LED
+      integrado, y el ESP-32 responde con mensajes de confirmación. Todo sin cables ni WiFi.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Cable USB A → C (para programar)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Teléfono Android con Bluetooth</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <p class="no-wiring">Sin conexiones externas — el LED integrado en GPIO 2 de la placa ESP-32 se usa directamente.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Comandos disponibles (desde el celular)</div>
+    <div class="cmd-grid">
+      <div class="cmd-item"><div class="cmd-code">L1</div><div class="cmd-desc">Enciende el LED integrado del ESP-32</div></div>
+      <div class="cmd-item"><div class="cmd-code">L0</div><div class="cmd-desc">Apaga el LED integrado del ESP-32</div></div>
+      <div class="cmd-item"><div class="cmd-code">ST</div><div class="cmd-desc">Consulta el estado actual del LED (encendido/apagado)</div></div>
+      <div class="cmd-item"><div class="cmd-code">cualquier texto</div><div class="cmd-desc">El ESP-32 hace eco del mensaje y lo muestra en el Monitor Serie</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code">#include "BluetoothSerial.h"
+
+// Bluetooth Classic — solo funciona en ESP-32 con soporte BT
+// (no en ESP32-S2 o ESP32-C3)
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+  #error Bluetooth no habilitado. Ve a: Arduino IDE -&gt; Herramientas -&gt; Partition Scheme -&gt; Huge APP
+#endif
+
+BluetoothSerial BT;
+const String DEVICE_NAME = "ESP32-BT";   // Nombre que aparece en el telefono
+const int    LED_PIN     = 2;            // LED integrado del ESP-32
+
+void procesarComando(String cmd) {
+  cmd.trim();
+
+  if (cmd == "L1") {
+    digitalWrite(LED_PIN, HIGH);
+    BT.println("LED: ENCENDIDO");
+    Serial.println("[BT] LED encendido");
+
+  } else if (cmd == "L0") {
+    digitalWrite(LED_PIN, LOW);
+    BT.println("LED: APAGADO");
+    Serial.println("[BT] LED apagado");
+
+  } else if (cmd == "ST") {
+    bool estado = digitalRead(LED_PIN);
+    BT.println("Estado LED: " + String(estado ? "ENCENDIDO" : "APAGADO"));
+
+  } else if (cmd.length() &gt; 0) {
+    BT.println("Eco: " + cmd);
+    Serial.println("[BT] mensaje: " + cmd);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+
+  BT.begin(DEVICE_NAME);
+
+  Serial.println("=== Bluetooth Serial ===");
+  Serial.println("Dispositivo: " + DEVICE_NAME);
+  Serial.println("Busca este nombre en tu telefono y empareja.");
+  Serial.println("Comandos: L1 / L0 / ST");
+  Serial.println("========================");
+}
+
+void loop() {
+  // Recibe datos del telefono via Bluetooth
+  if (BT.available()) {
+    String msg = BT.readStringUntil('\n');
+    procesarComando(msg);
+  }
+
+  // Reenvía lo que escribas en Monitor Serie al telefono
+  if (Serial.available()) {
+    String msg = Serial.readStringUntil('\n');
+    BT.println(msg);
+  }
+
+  delay(20);
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Sube el código al ESP-32 y abre el Monitor Serie a <code>115200</code> baud para ver los mensajes de estado.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">En tu teléfono Android, instala la app <strong>Serial Bluetooth Terminal</strong> (disponible en Play Store, gratis).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Ve a Configuración → Bluetooth de tu teléfono y empareja con el dispositivo llamado <code>ESP32-BT</code>. PIN: sin PIN o <code>1234</code>.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Abre la app Serial Bluetooth Terminal, conéctate a <code>ESP32-BT</code> y envía comandos como <code>L1</code>, <code>L0</code>, <code>ST</code>.</div></div>
+    </div>
+    <div class="note">
+      <strong>Nota:</strong> Esta librería usa <em>Bluetooth Classic</em> (no BLE). Solo funciona con Android.
+      Para iOS necesitarías usar BLE con la librería <code>NimBLE-Arduino</code>.
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('code');
+  if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      this.textContent = '✓ Copiado';
+      setTimeout(() => this.textContent = 'Copiar', 2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>
