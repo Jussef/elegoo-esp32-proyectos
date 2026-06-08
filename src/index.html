@@ -146,6 +146,24 @@
   .panel-name { font-size: 16px; font-weight: 700; }
   .panel-meta { font-size: 12px; color: rgba(255,255,255,0.38); margin-top: 3px; }
 
+  .demo-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.1);
+    color: #67e8f9;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .demo-btn:hover { background: #22d3ee; border-color: #22d3ee; color: #0f0f13; }
+
   .projects {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -216,7 +234,7 @@
 
 <script>
 const components = [
-  { name: "ESP-32 Board", qty: "1PC", icon: "📡", cat: "comunicacion", projects: [
+  { name: "ESP-32 Board", qty: "1PC", icon: "📡", cat: "comunicacion", demo: "demos/esp32-blink.html", projects: [
     { title: "Portal WiFi Cautivo", desc: "Crea tu propio punto de acceso WiFi. Cualquier dispositivo que se conecte ve una página personalizada.", diff: "facil", parts: "Solo ESP-32", link: "proyectos-board/1-wifi_cautivo.html" },
     { title: "Servidor web con WiFi", desc: "Controla el LED integrado desde cualquier navegador en tu red local. Sin apps, sin cables.", diff: "facil", parts: "ESP-32, LED, Resistor", link: "proyectos-board/2-servidor_web.html" },
     { title: "Reloj NTP por Internet", desc: "Sincroniza la hora exacta con servidores NTP. Muestra fecha y hora completas en el Monitor Serie.", diff: "facil", parts: "Solo ESP-32", link: "proyectos-board/3-reloj_ntp.html" },
@@ -224,7 +242,7 @@ const components = [
     { title: "Terminal Bluetooth Serial", desc: "Empareja el ESP-32 con tu teléfono y envía comandos por Bluetooth para controlar el LED.", diff: "medio", parts: "Solo ESP-32", link: "proyectos-board/5-bluetooth.html" },
     { title: "Actualizaciones OTA", desc: "Actualiza el firmware del ESP-32 por WiFi sin cable USB. Ideal para proyectos ya montados.", diff: "medio", parts: "Solo ESP-32", link: "proyectos-board/6-ota.html" }
   ]},
-  { name: "0.96\" OLED Display", qty: "1PC", icon: "🖥️", cat: "display", projects: [
+  { name: "0.96\" OLED Display", qty: "1PC", icon: "🖥️", cat: "display", demo: "demos/oled-hola-mundo.html", projects: [
     { title: "Reloj digital", desc: "Muestra hora, fecha y temperatura en la pantalla OLED.", diff: "facil", parts: "OLED, DHT11", link: "proyectos-oled/1-reloj_digital.html" },
     { title: "Medidor de distancia", desc: "Muestra en tiempo real la distancia medida por el sensor ultrasónico.", diff: "facil", parts: "OLED, Ultrasonic Sensor", link: "proyectos-oled/2-medidor_distancia.html" },
     { title: "Snake", desc: "El clásico juego Snake con joystick y pantalla OLED. El juego se acelera con cada comida.", diff: "avanzado", parts: "OLED, Joystick", link: "proyectos-oled/3-snake.html" },
@@ -233,29 +251,31 @@ const components = [
   ]},
   { name: "GY-6500 Module", qty: "1PC", icon: "📐", cat: "sensor", projects: [
     { title: "Nivel digital", desc: "Muestra el ángulo de inclinación en la pantalla OLED.", diff: "facil", parts: "GY-6500, OLED", link: "proyectos-oled/4-nivel_digital.html" },
-    { title: "Gimbal simple", desc: "Usa el giroscopio para controlar servos y mantener estable una plataforma.", diff: "avanzado", parts: "GY-6500, Servo SG90" },
-    { title: "Controlador de gestos", desc: "Controla el color del LED RGB según la orientación del módulo.", diff: "medio", parts: "GY-6500, RGB LED" }
+    { title: "Gimbal simple", desc: "Usa el giroscopio para controlar servos y mantener estable una plataforma.", diff: "avanzado", parts: "GY-6500, Servo SG90", link: "proyectos-gy6500/1-gimbal_simple.html" },
+    { title: "Controlador de gestos", desc: "Controla el color del LED RGB según la orientación del módulo.", diff: "medio", parts: "GY-6500, RGB LED", link: "proyectos-gy6500/2-controlador_gestos.html" }
   ]},
   { name: "Power Supply Module", qty: "1PC", icon: "🔌", cat: "electronica", projects: [
     { title: "Fuente regulada", desc: "Provee 3.3V y 5V estables a todos tus circuitos en el protoboard.", diff: "facil", parts: "Power Supply, Protoboard" },
     { title: "Banco de pruebas", desc: "Alimenta múltiples módulos simultáneamente durante el desarrollo.", diff: "facil", parts: "Power Supply, todos los módulos" }
   ]},
-  { name: "ULN2003 + Stepper Motor", qty: "1PC c/u", icon: "⚙️", cat: "motor", projects: [
-    { title: "Cerradura automática", desc: "Gira el motor para trabar o destrabar una cerradura con un botón.", diff: "medio", parts: "Stepper, ULN2003, Button" },
-    { title: "Plotter XY simple", desc: "Mueve un lápiz en 2 ejes para dibujar formas programadas.", diff: "avanzado", parts: "Stepper x2, ULN2003 x2" },
-    { title: "Reloj de manecillas", desc: "Motor paso a paso como mecanismo de reloj con control preciso.", diff: "medio", parts: "Stepper, ULN2003, OLED" }
+  { name: "ULN2003 + Stepper Motor", qty: "1PC c/u", icon: "⚙️", cat: "motor", demo: "demos/stepper-test.html", projects: [
+    { title: "Indicador de Aguja (Gauge)", desc: "Convierte el motor en un medidor analógico de aguja. El potenciómetro mueve la aguja sobre una escala de ~270°.", diff: "facil", parts: "Stepper, ULN2003, Potenciómetro", link: "proyectos-stepper/1-indicador_aguja.html" },
+    { title: "Cortina automática", desc: "Abre y cierra una cortina según la luz ambiente (LDR con histéresis) y con un botón de control manual.", diff: "medio", parts: "Stepper, ULN2003, Photoresistor, Button", link: "proyectos-stepper/2-cortina_automatica.html" },
+    { title: "Seguidor de luz (Sun Tracker)", desc: "El motor orienta una superficie hacia la mayor fuente de luz comparando dos LDR (lazo cerrado).", diff: "medio", parts: "Stepper, ULN2003, Photoresistor x2", link: "proyectos-stepper/3-seguidor_luz.html" },
+    { title: "Cerradura / Caja fuerte con código", desc: "El motor actúa como pestillo motorizado, desbloqueado con un código en el teclado matricial.", diff: "medio", parts: "Stepper, ULN2003, Keypad 4×4, OLED", link: "proyectos-stepper/4-caja_fuerte.html" },
+    { title: "Dispensador automático", desc: "Gira un tambor para dispensar porciones a horas programadas (NTP) o por botón.", diff: "avanzado", parts: "Stepper, ULN2003, OLED, Button", link: "proyectos-stepper/5-dispensador.html" }
   ]},
   { name: "Servo Motor SG90", qty: "1PC", icon: "🦾", cat: "motor", projects: [
     { title: "Barrera automática", desc: "Sube y baja una barrera cuando se presiona un botón.", diff: "facil", parts: "Servo SG90, Button" },
     { title: "Brazo robótico", desc: "Controla el ángulo del servo con el potenciómetro en tiempo real.", diff: "facil", parts: "Servo SG90, Potenciómetro" },
     { title: "Seguidor de luz", desc: "El servo orienta un panel hacia la fuente de luz más intensa.", diff: "medio", parts: "Servo SG90, Photoresistor x2" }
   ]},
-  { name: "5V Relay", qty: "1PC", icon: "⚡", cat: "control", projects: [
+  { name: "5V Relay", qty: "1PC", icon: "⚡", cat: "control", demo: "demos/relay-test.html", projects: [
     { title: "Enchufe inteligente", desc: "Enciende o apaga un dispositivo de 110V/220V con una señal de 5V.", diff: "medio", parts: "5V Relay, ESP-32" },
     { title: "Temporizador de riego", desc: "Activa una bomba de agua a intervalos programados.", diff: "medio", parts: "5V Relay, ESP-32" },
     { title: "Alarma con sirena", desc: "Activa una sirena cuando el PIR detecta movimiento.", diff: "facil", parts: "5V Relay, HC-SR501, Active Buzzer" }
   ]},
-  { name: "IR Receiver & Emitter", qty: "1PC c/u", icon: "🔴", cat: "comunicacion", projects: [
+  { name: "IR Receiver & Emitter", qty: "1PC c/u", icon: "🔴", cat: "comunicacion", demo: "demos/ir-test.html", projects: [
     { title: "Control remoto universal", desc: "Decodifica señales de cualquier control IR y activa módulos.", diff: "facil", parts: "IR Receiver, Remote Control, LED" },
     { title: "Barrera de seguridad", desc: "Detecta cuando algo interrumpe el haz infrarrojo.", diff: "facil", parts: "IR Receiver, IR Emitter" },
     { title: "Control de TV desde ESP-32", desc: "Envía comandos IR a tu televisor programáticamente.", diff: "medio", parts: "IR Emitter, ESP-32" }
@@ -308,6 +328,7 @@ const components = [
     { title: "Selección de modos", desc: "Los botones seleccionan diferentes efectos de luz o melodías.", diff: "facil", parts: "Buttons, LED, Passive Buzzer" }
   ]},
   { name: "7-Segment Display", qty: "1 + 4 dígitos", icon: "🔢", cat: "display", projects: [
+    { title: "Demo Contador + Reloj OLED", desc: "Cuenta del 0 al 9 en el display de 1 dígito, parpadea el punto decimal y luego muestra un reloj con temperatura en pantalla OLED.", diff: "medio", parts: "7-Seg Display, OLED, DHT11", link: "proyectos-7seg/1-demo_contador.html" },
     { title: "Contador 0-9999", desc: "Cada botón incrementa el contador en el display de 4 dígitos.", diff: "facil", parts: "4-Digit Display, Button, 74HC595" },
     { title: "Cronómetro", desc: "Inicia, pausa y reinicia un cronómetro con botones.", diff: "medio", parts: "4-Digit Display, Button" },
     { title: "Dado electrónico", desc: "Al presionar el botón muestra un número aleatorio del 1 al 6.", diff: "facil", parts: "1-Digit Display, Button" }
@@ -430,6 +451,7 @@ function renderPanel() {
           <div class="panel-name">${comp.name}</div>
           <div class="panel-meta">${comp.qty} · ${CAT_LABELS[comp.cat]} · ${comp.projects.length} proyectos disponibles</div>
         </div>
+        ${comp.demo ? `<button class="demo-btn" onclick="location.href='${comp.demo}'">⚡ Pruébame</button>` : ''}
       </div>
       <div class="projects">
         ${comp.projects.map(p => `
