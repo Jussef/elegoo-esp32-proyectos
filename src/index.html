@@ -211,6 +211,42 @@
   .project-link:hover { background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.3); }
 
   .empty { text-align: center; padding: 40px; color: rgba(255,255,255,0.25); font-size: 14px; grid-column: 1 / -1; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px;
+    overflow-y: auto;
+    z-index: 100;
+    animation: fadeIn 0.18s ease;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay .panel { max-width: 760px; width: 100%; position: relative; margin: auto; background: #580b19; border: 1px solid #ca0025; }
+  .overlay .panel-header { padding-right: 58px; }
+
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.6);
+    font-size: 20px; line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s;
+    z-index: 2;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+  body.modal-open { overflow: hidden; }
 </style>
 </head>
 <body>
@@ -229,7 +265,9 @@
   <input type="text" id="search" placeholder="Buscar componente...">
   <div class="filters" id="filters"></div>
   <div class="grid" id="grid"></div>
-  <div id="panel"></div>
+  <div id="overlay" class="overlay" hidden>
+    <div id="panel"></div>
+  </div>
 </main>
 
 <script>
@@ -249,12 +287,12 @@ const components = [
     { title: "Nivel Digital", desc: "Muestra ángulos Pitch y Roll en tiempo real con barras indicadoras. Detecta cuando está nivelado.", diff: "facil", parts: "OLED, GY-6500", link: "proyectos-oled/4-nivel_digital.html" },
     { title: "Calculadora", desc: "Calculadora de 4 operaciones con teclado matricial 4×4. Muestra la expresión y el resultado en pantalla.", diff: "medio", parts: "OLED, Keypad 4×4", link: "proyectos-oled/5-calculadora.html" }
   ]},
-  { name: "GY-6500 Module", qty: "1PC", icon: "📐", cat: "sensor", projects: [
+  { name: "GY-6500 Module", qty: "1PC", icon: "📐", cat: "sensor", demo: "demos/gy6500-test.html", projects: [
     { title: "Nivel digital", desc: "Muestra el ángulo de inclinación en la pantalla OLED.", diff: "facil", parts: "GY-6500, OLED", link: "proyectos-oled/4-nivel_digital.html" },
     { title: "Gimbal simple", desc: "Usa el giroscopio para controlar servos y mantener estable una plataforma.", diff: "avanzado", parts: "GY-6500, Servo SG90", link: "proyectos-gy6500/1-gimbal_simple.html" },
     { title: "Controlador de gestos", desc: "Controla el color del LED RGB según la orientación del módulo.", diff: "medio", parts: "GY-6500, RGB LED", link: "proyectos-gy6500/2-controlador_gestos.html" }
   ]},
-  { name: "Power Supply Module", qty: "1PC", icon: "🔌", cat: "electronica", projects: [
+  { name: "Power Supply Module", qty: "1PC", icon: "🔌", cat: "electronica", demo: "demos/power-supply-test.html", projects: [
     { title: "Fuente regulada", desc: "Provee 3.3V y 5V estables a todos tus circuitos en el protoboard.", diff: "facil", parts: "Power Supply, Protoboard" },
     { title: "Banco de pruebas", desc: "Alimenta múltiples módulos simultáneamente durante el desarrollo.", diff: "facil", parts: "Power Supply, todos los módulos" }
   ]},
@@ -265,7 +303,7 @@ const components = [
     { title: "Cerradura / Caja fuerte con código", desc: "El motor actúa como pestillo motorizado, desbloqueado con un código en el teclado matricial.", diff: "medio", parts: "Stepper, ULN2003, Keypad 4×4, OLED", link: "proyectos-stepper/4-caja_fuerte.html" },
     { title: "Dispensador automático", desc: "Gira un tambor para dispensar porciones a horas programadas (NTP) o por botón.", diff: "avanzado", parts: "Stepper, ULN2003, OLED, Button", link: "proyectos-stepper/5-dispensador.html" }
   ]},
-  { name: "Servo Motor SG90", qty: "1PC", icon: "🦾", cat: "motor", projects: [
+  { name: "Servo Motor SG90", qty: "1PC", icon: "🦾", cat: "motor", demo: "demos/servo-test.html", projects: [
     { title: "Barrera automática", desc: "Sube y baja una barrera cuando se presiona un botón.", diff: "facil", parts: "Servo SG90, Button" },
     { title: "Brazo robótico", desc: "Controla el ángulo del servo con el potenciómetro en tiempo real.", diff: "facil", parts: "Servo SG90, Potenciómetro" },
     { title: "Seguidor de luz", desc: "El servo orienta un panel hacia la fuente de luz más intensa.", diff: "medio", parts: "Servo SG90, Photoresistor x2" }
@@ -280,22 +318,22 @@ const components = [
     { title: "Barrera de seguridad", desc: "Detecta cuando algo interrumpe el haz infrarrojo.", diff: "facil", parts: "IR Receiver, IR Emitter" },
     { title: "Control de TV desde ESP-32", desc: "Envía comandos IR a tu televisor programáticamente.", diff: "medio", parts: "IR Emitter, ESP-32" }
   ]},
-  { name: "Joystick Module", qty: "1PC", icon: "🕹️", cat: "control", projects: [
+  { name: "Joystick Module", qty: "1PC", icon: "🕹️", cat: "control", demo: "demos/joystick-test.html", projects: [
     { title: "Control de robot", desc: "Dirige un robot con el joystick: adelante, atrás, giros.", diff: "medio", parts: "Joystick, Motor DC x2, L293D" },
     { title: "Cursor en OLED", desc: "Mueve un cursor o selecciona opciones en el menú de la pantalla OLED.", diff: "facil", parts: "Joystick, OLED" },
     { title: "Mini consola de videojuego", desc: "Juego de laberinto o Snake con joystick y pantalla OLED.", diff: "avanzado", parts: "Joystick, OLED" }
   ]},
-  { name: "DHT11 Temp & Humidity", qty: "1PC", icon: "🌡️", cat: "sensor", projects: [
+  { name: "DHT11 Temp & Humidity", qty: "1PC", icon: "🌡️", cat: "sensor", demo: "demos/dht11-test.html", projects: [
     { title: "Estación meteorológica", desc: "Mide temperatura y humedad y las muestra en la pantalla OLED.", diff: "facil", parts: "DHT11, OLED" },
     { title: "Termostato inteligente", desc: "Activa un ventilador cuando la temperatura supera un umbral.", diff: "medio", parts: "DHT11, Fan Motor, Relay" },
     { title: "Logger de clima IoT", desc: "Sube los datos a internet cada 10 minutos y los grafica.", diff: "avanzado", parts: "DHT11, ESP-32" }
   ]},
-  { name: "Ultrasonic Sensor", qty: "1PC", icon: "📏", cat: "sensor", projects: [
+  { name: "Ultrasonic Sensor", qty: "1PC", icon: "📏", cat: "sensor", demo: "demos/ultrasonic-test.html", projects: [
     { title: "Sensor de estacionamiento", desc: "Avisa con buzzer y LED cuando un coche se acerca demasiado.", diff: "facil", parts: "Ultrasonic, Active Buzzer, LED" },
     { title: "Medidor con display", desc: "Muestra la distancia en cm o pulgadas en la pantalla OLED.", diff: "facil", parts: "Ultrasonic, OLED" },
     { title: "Robot anticolisión", desc: "El robot se detiene o gira al detectar obstáculos.", diff: "medio", parts: "Ultrasonic, Servo, Motor" }
   ]},
-  { name: "Fan + Motor 3-6V", qty: "1PC", icon: "🌀", cat: "motor", projects: [
+  { name: "Fan + Motor 3-6V", qty: "1PC", icon: "🌀", cat: "motor", demo: "demos/fan-motor-test.html", projects: [
     { title: "Ventilador automático", desc: "Enciende el fan cuando el DHT11 detecta calor excesivo.", diff: "facil", parts: "Fan Motor, DHT11, Transistor PN2222" },
     { title: "Anemómetro casero", desc: "Mide velocidad del viento contando las revoluciones del fan.", diff: "medio", parts: "Fan Motor, IR sensor" }
   ]},
@@ -428,7 +466,6 @@ function render() {
       card.addEventListener("click", () => {
         selected = selected === comp.name ? null : comp.name;
         render();
-        if (selected) setTimeout(() => document.getElementById("panel").scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
       });
       grid.appendChild(card);
     });
@@ -437,14 +474,26 @@ function render() {
   renderPanel();
 }
 
+function closeModal() {
+  selected = null;
+  render();
+}
+
 function renderPanel() {
+  const overlay = document.getElementById("overlay");
   const panel = document.getElementById("panel");
-  if (!selected) { panel.innerHTML = ""; return; }
-  const comp = components.find(c => c.name === selected);
-  if (!comp) { panel.innerHTML = ""; return; }
+  const comp = selected ? components.find(c => c.name === selected) : null;
+
+  if (!comp) {
+    overlay.hidden = true;
+    panel.innerHTML = "";
+    document.body.classList.remove("modal-open");
+    return;
+  }
 
   panel.innerHTML = `
     <div class="panel">
+      <button class="modal-close" id="modalClose" aria-label="Cerrar">&times;</button>
       <div class="panel-header">
         <div class="panel-icon">${comp.icon}</div>
         <div>
@@ -467,7 +516,21 @@ function renderPanel() {
       </div>
     </div>
   `;
+
+  overlay.hidden = false;
+  document.body.classList.add("modal-open");
+  document.getElementById("modalClose").addEventListener("click", closeModal);
 }
+
+// Cerrar al hacer clic fuera del panel (en el fondo oscuro)
+document.getElementById("overlay").addEventListener("click", (e) => {
+  if (e.target.id === "overlay") closeModal();
+});
+
+// Cerrar con la tecla Escape
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && selected) closeModal();
+});
 
 render();
 </script>

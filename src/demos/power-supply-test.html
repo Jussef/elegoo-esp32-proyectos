@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo · Alimentar el ESP-32 con batería 9V — Power Supply Module</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f13; color: #fff; min-height: 100vh; }
+header { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 24px; position: sticky; top: 0; background: #0f0f13; z-index: 10; }
+.header-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.back { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; }
+.back:hover { color: #22d3ee; }
+.hdiv { color: rgba(255,255,255,0.15); }
+.proj-num { font-size: 11px; font-weight: 700; color: rgba(34,211,238,0.55); letter-spacing: 0.05em; }
+.proj-title { font-size: 15px; font-weight: 700; }
+main { max-width: 820px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 18px; }
+.section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 22px 24px; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(34,211,238,0.6); margin-bottom: 14px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.demo { background: rgba(34,211,238,0.12); color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
+.cat-tag { font-size: 11px; color: rgba(255,255,255,0.35); padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); }
+.desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.7; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.08); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.7); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.pin { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(34,211,238,0.08); color: #22d3ee; padding: 2px 8px; border-radius: 5px; border: 1px solid rgba(34,211,238,0.15); white-space: nowrap; }
+.flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.flow .node { background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.2); border-radius: 10px; padding: 10px 14px; color: rgba(255,255,255,0.85); line-height: 1.4; }
+.flow .node small { display: block; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.flow .arrow { color: rgba(34,211,238,0.5); font-size: 16px; }
+.code-box { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.code-header { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; }
+.code-lang { font-size: 11px; color: rgba(255,255,255,0.25); font-family: monospace; }
+.copy-btn { font-size: 11px; color: rgba(34,211,238,0.6); background: none; border: 1px solid rgba(34,211,238,0.15); border-radius: 5px; padding: 3px 10px; cursor: pointer; transition: .15s; }
+.copy-btn:hover { background: rgba(34,211,238,0.08); color: #22d3ee; }
+pre { margin: 0 !important; border-radius: 0 !important; background: #0a0a10 !important; overflow-x: auto; }
+pre code { display: block; padding: 18px 20px; font-size: 12.5px; line-height: 1.6; color: #e2e8f0; font-family: 'Courier New', Consolas, monospace; white-space: pre; }
+code.hljs { font-size: 12.5px !important; line-height: 1.6 !important; padding: 18px 20px !important; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.step { display: flex; gap: 14px; align-items: flex-start; }
+.step-n { width: 26px; height: 26px; border-radius: 50%; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.2); color: #22d3ee; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+.step-text code { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; color: #22d3ee; }
+.note { font-size: 12.5px; color: rgba(255,255,255,0.45); background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: 10px; padding: 12px 16px; line-height: 1.6; margin-top: 14px; }
+.note strong { color: rgba(245,158,11,0.8); }
+.note.danger { background: rgba(239,68,68,0.07); border-color: rgba(239,68,68,0.2); }
+.note.danger strong { color: #fca5a5; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="back" href="../index.html">← Volver</a>
+    <span class="hdiv">/</span>
+    <span class="proj-num">DEMO</span>
+    <span class="hdiv">/</span>
+    <span class="proj-title">Alimentar el ESP-32 con batería de 9V</span>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Cómo se usa</span>
+      <span class="cat-tag">Electrónica · Alimentación</span>
+    </div>
+    <p class="desc">
+      Aprende a usar el <strong>Power Supply Module</strong> para alimentar tu ESP-32 con una
+      <strong>batería de 9V</strong> y dejarlo funcionar <strong>sin cable USB</strong>. El módulo recibe los 9V de
+      la batería y los convierte en <strong>5V estables</strong> que entrega a los rieles del protoboard. Desde ahí
+      llevas el <strong>+ al pin VIN</strong> del ESP-32 y el <strong>− al GND</strong>. El pequeño
+      <strong>jumper de plástico</strong> de cada riel es el que selecciona el voltaje de salida: lo pones en
+      <strong>5V</strong>.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo funciona el módulo</div>
+    <p class="desc" style="margin-bottom:16px;">
+      El módulo se monta a horcajadas sobre el protoboard y alimenta sus dos rieles laterales (el <code>+</code> y el
+      <code>−</code> de cada lado). Cada lado tiene su propio <strong>jumper</strong> con 3 posiciones:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Posición del jumper</th><th>Salida de ese riel</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="pin">3.3V</span></td><td>El riel entrega 3.3V</td></tr>
+        <tr><td><span class="pin">5V</span></td><td>El riel entrega 5V &nbsp;←&nbsp; <strong>el que usamos</strong></td></tr>
+        <tr><td><span class="pin">OFF</span> (jumper quitado o en el centro)</td><td>Ese riel queda apagado</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      Cada lado se configura <strong>por separado</strong>. Puedes tener, por ejemplo, un riel en 5V para el ESP-32
+      y el otro en 3.3V para un sensor, al mismo tiempo.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">El camino de la energía</div>
+    <div class="flow">
+      <div class="node">Batería 9V<small>+ clip / jack</small></div>
+      <span class="arrow">→</span>
+      <div class="node">Entrada del módulo<small>jack DC</small></div>
+      <span class="arrow">→</span>
+      <div class="node">Jumper en 5V<small>regula a 5V</small></div>
+      <span class="arrow">→</span>
+      <div class="node">Riel del protoboard<small>+ y −</small></div>
+      <span class="arrow">→</span>
+      <div class="node">ESP-32<small>VIN y GND</small></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Desde</th><th>Hacia</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Batería 9V (jack)</td><td>Entrada DC del módulo</td><td>La batería de 9V con su clip entra por el conector del módulo</td></tr>
+        <tr><td>Jumper del riel</td><td><span class="pin">5V</span></td><td>Selecciona la salida de 5V en el lado que vas a usar</td></tr>
+        <tr><td>Riel <strong>+</strong> del protoboard</td><td><span class="pin">VIN</span> del ESP-32</td><td>El + (5V) va a VIN — el ESP-32 lo regula a 3.3V internamente</td></tr>
+        <tr><td>Riel <strong>−</strong> del protoboard</td><td><span class="pin">GND</span> del ESP-32</td><td>El − siempre va a GND</td></tr>
+      </tbody>
+    </table>
+    <div class="note danger" style="margin-top:12px;">
+      <strong>Cuida la polaridad:</strong> el <strong>−</strong> va a <code>GND</code> y el <strong>+</strong> a
+      <code>VIN</code>. Invertirlos puede dañar la placa. Y <strong>no</strong> conectes el riel de 5V al pin
+      <code>3V3</code> del ESP-32 — ese pin es <em>salida</em> de 3.3V, no entrada.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código para confirmar que enciende</div>
+    <p class="desc" style="margin-bottom:14px;">
+      No hace falta ningún código especial para alimentarlo, pero este parpadeo del LED interno te confirma de un
+      vistazo que el ESP-32 arrancó <strong>con la batería</strong>. Súbelo por USB y luego pásalo a la batería.
+    </p>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code">// Latido de "estoy vivo": confirma que el ESP-32 corre con la bateria
+#define LED 2   // LED integrado de la mayoria de placas ESP-32 DevKit
+
+void setup() {
+  pinMode(LED, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED, HIGH);   // encendido
+  delay(200);
+  digitalWrite(LED, LOW);    // apagado
+  delay(800);
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Monta el Power Supply Module sobre el protoboard, encajando sus patas en los rieles <code>+</code> y <code>−</code> de los lados.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Pon el <strong>jumper</strong> del lado que vas a usar en la posición <code>5V</code>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">(Opcional) Sube el código del latido al ESP-32 por <strong>USB</strong> primero, para tenerlo listo.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Cablea: riel <strong>−</strong> → <code>GND</code> del ESP-32, y riel <strong>+</strong> → <code>VIN</code>.</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-text">Conecta la <strong>batería de 9V</strong> a la entrada del módulo y enciéndelo con su interruptor. El LED debe empezar a parpadear: ¡el ESP-32 ya corre con la batería!</div></div>
+    </div>
+    <div class="note danger">
+      <strong>No alimentes por USB y por VIN a la vez.</strong> Para programar usa el USB; para correr con batería,
+      <strong>desconecta el USB</strong>. Tener las dos fuentes conectadas al mismo tiempo puede causar problemas.
+    </div>
+    <div class="note">
+      <strong>Sobre la duración:</strong> una batería de 9V tiene poca capacidad. Sirve perfecto para pruebas y
+      proyectos cortos, pero con WiFi encendido se agota rápido. Para algo permanente, una fuente por el jack o un
+      power bank por USB rinden mucho más.
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('code');
+  if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      this.textContent = '✓ Copiado';
+      setTimeout(() => this.textContent = 'Copiar', 2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>

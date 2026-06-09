@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo · Prueba Ultrasonic Sensor (HC-SR04) — ESP32</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f13; color: #fff; min-height: 100vh; }
+header { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 24px; position: sticky; top: 0; background: #0f0f13; z-index: 10; }
+.header-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.back { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; }
+.back:hover { color: #22d3ee; }
+.hdiv { color: rgba(255,255,255,0.15); }
+.proj-num { font-size: 11px; font-weight: 700; color: rgba(34,211,238,0.55); letter-spacing: 0.05em; }
+.proj-title { font-size: 15px; font-weight: 700; }
+main { max-width: 820px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 18px; }
+.section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 22px 24px; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(34,211,238,0.6); margin-bottom: 14px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.demo { background: rgba(34,211,238,0.12); color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
+.cat-tag { font-size: 11px; color: rgba(255,255,255,0.35); padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); }
+.desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.7; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.08); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.7); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.pin { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(34,211,238,0.08); color: #22d3ee; padding: 2px 8px; border-radius: 5px; border: 1px solid rgba(34,211,238,0.15); white-space: nowrap; }
+.code-box { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.code-header { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; }
+.code-lang { font-size: 11px; color: rgba(255,255,255,0.25); font-family: monospace; }
+.copy-btn { font-size: 11px; color: rgba(34,211,238,0.6); background: none; border: 1px solid rgba(34,211,238,0.15); border-radius: 5px; padding: 3px 10px; cursor: pointer; transition: .15s; }
+.copy-btn:hover { background: rgba(34,211,238,0.08); color: #22d3ee; }
+pre { margin: 0 !important; border-radius: 0 !important; background: #0a0a10 !important; overflow-x: auto; }
+pre code { display: block; padding: 18px 20px; font-size: 12.5px; line-height: 1.6; color: #e2e8f0; font-family: 'Courier New', Consolas, monospace; white-space: pre; }
+code.hljs { font-size: 12.5px !important; line-height: 1.6 !important; padding: 18px 20px !important; }
+.serial { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 20px; font-family: 'Courier New', Consolas, monospace; font-size: 12.5px; line-height: 1.7; color: #6ee7b7; overflow-x: auto; white-space: pre; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.step { display: flex; gap: 14px; align-items: flex-start; }
+.step-n { width: 26px; height: 26px; border-radius: 50%; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.2); color: #22d3ee; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+.step-text code { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; color: #22d3ee; }
+.note { font-size: 12.5px; color: rgba(255,255,255,0.45); background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: 10px; padding: 12px 16px; line-height: 1.6; margin-top: 14px; }
+.note strong { color: rgba(245,158,11,0.8); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="back" href="../index.html">← Volver</a>
+    <span class="hdiv">/</span>
+    <span class="proj-num">DEMO</span>
+    <span class="hdiv">/</span>
+    <span class="proj-title">Prueba Ultrasonic Sensor (HC-SR04)</span>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Distancia</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu sensor ultrasónico <strong>HC-SR04</strong>: mide la
+      <strong>distancia</strong> a un objeto enviando un pulso de sonido por <code>TRIG</code> y midiendo
+      cuánto tarda el eco en volver por <code>ECHO</code>. Imprime la distancia en <strong>centímetros</strong>
+      en el Monitor Serie. Sirve para confirmar que el sensor <strong>está bien conectado</strong> y que
+      reacciona al acercar o alejar la mano. No necesita librerías externas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>HC-SR04 — VCC</td><td><span class="pin">5V (VIN)</span></td><td>El HC-SR04 necesita 5V para funcionar bien</td></tr>
+        <tr><td>HC-SR04 — TRIG</td><td><span class="pin">GPIO 5</span></td><td>Salida: dispara el pulso ultrasónico</td></tr>
+        <tr><td>HC-SR04 — ECHO</td><td><span class="pin">GPIO 18</span></td><td>Entrada: devuelve el eco (¡ver nota!)</td></tr>
+        <tr><td>HC-SR04 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>¡Atención con ECHO!</strong> El pin <code>ECHO</code> entrega 5V y los GPIO del ESP-32 son de
+      <code>3.3V</code>. Lo ideal es bajar ese voltaje con un <strong>divisor de tensión</strong> (por
+      ejemplo <code>1 kΩ</code> y <code>2 kΩ</code>) entre <code>ECHO</code> y el GPIO. Para una prueba corta
+      suele tolerarse directo, pero el divisor protege tu placa.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code">#define PIN_TRIG  5    // TRIG -&gt; GPIO 5  (salida)
+#define PIN_ECHO  18   // ECHO -&gt; GPIO 18 (entrada, idealmente con divisor)
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  pinMode(PIN_TRIG, OUTPUT);
+  pinMode(PIN_ECHO, INPUT);
+  digitalWrite(PIN_TRIG, LOW);
+  Serial.println("HC-SR04 listo. Midiendo distancia...\n");
+}
+
+void loop() {
+  // 1) Pulso de disparo de 10 us en TRIG
+  digitalWrite(PIN_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_TRIG, LOW);
+
+  // 2) Medir cuanto dura el eco (en microsegundos). Timeout 30 ms (~5 m)
+  long dur = pulseIn(PIN_ECHO, HIGH, 30000);
+
+  if (dur == 0) {
+    Serial.println("Fuera de rango (sin eco).");
+  } else {
+    // 3) Distancia = (tiempo * velocidad del sonido) / 2
+    //    velocidad ~ 0.0343 cm/us, dividido entre 2 (ida y vuelta)
+    float cm = dur * 0.0343 / 2.0;
+    Serial.printf("Distancia: %.1f cm\n", cm);
+  }
+
+  delay(300);
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">HC-SR04 listo. Midiendo distancia...
+
+Distancia: 42.3 cm
+Distancia: 18.6 cm
+Distancia: 7.1 cm
+Distancia: 25.4 cm
+Fuera de rango (sin eco).</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>Acerca y aleja la mano</strong> frente al sensor: la distancia debe bajar y subir al instante.
+      Si apuntas al vacío o a más de ~4 m, saldrá <code>Fuera de rango</code>. El HC-SR04 mide bien desde
+      unos <code>2 cm</code> hasta <code>~4 m</code>. ¡Si los números reaccionan, funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el HC-SR04: <code>VCC→5V</code>, <code>TRIG→GPIO 5</code>, <code>ECHO→GPIO 18</code> (mejor con divisor) y <code>GND→GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text"><strong>No hace falta instalar ninguna librería</strong>: el código usa <code>pulseIn()</code>, que ya viene con el core del ESP-32.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Pon la mano o un objeto plano frente al sensor y muévelo: la distancia debe cambiar en tiempo real.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Siempre sale "Fuera de rango" o valores absurdos?</strong> Revisa que <code>VCC</code> sea
+      <code>5V</code> (no 3.3V), que <code>TRIG</code> y <code>ECHO</code> no estén intercambiados y que el
+      objeto sea plano (las superficies blandas o en ángulo dispersan el eco). Apunta a una pared para una
+      prueba fiable.
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('code');
+  if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      this.textContent = '✓ Copiado';
+      setTimeout(() => this.textContent = 'Copiar', 2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>

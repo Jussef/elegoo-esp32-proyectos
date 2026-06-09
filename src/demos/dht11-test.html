@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo · Prueba DHT11 Temp & Humidity — ESP32</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f13; color: #fff; min-height: 100vh; }
+header { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 24px; position: sticky; top: 0; background: #0f0f13; z-index: 10; }
+.header-inner { max-width: 820px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.back { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; }
+.back:hover { color: #22d3ee; }
+.hdiv { color: rgba(255,255,255,0.15); }
+.proj-num { font-size: 11px; font-weight: 700; color: rgba(34,211,238,0.55); letter-spacing: 0.05em; }
+.proj-title { font-size: 15px; font-weight: 700; }
+main { max-width: 820px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 18px; }
+.section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 22px 24px; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(34,211,238,0.6); margin-bottom: 14px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.demo { background: rgba(34,211,238,0.12); color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
+.cat-tag { font-size: 11px; color: rgba(255,255,255,0.35); padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); }
+.desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.7; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.08); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.7); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.pin { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(34,211,238,0.08); color: #22d3ee; padding: 2px 8px; border-radius: 5px; border: 1px solid rgba(34,211,238,0.15); white-space: nowrap; }
+.code-box { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.code-header { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; }
+.code-lang { font-size: 11px; color: rgba(255,255,255,0.25); font-family: monospace; }
+.copy-btn { font-size: 11px; color: rgba(34,211,238,0.6); background: none; border: 1px solid rgba(34,211,238,0.15); border-radius: 5px; padding: 3px 10px; cursor: pointer; transition: .15s; }
+.copy-btn:hover { background: rgba(34,211,238,0.08); color: #22d3ee; }
+pre { margin: 0 !important; border-radius: 0 !important; background: #0a0a10 !important; overflow-x: auto; }
+pre code { display: block; padding: 18px 20px; font-size: 12.5px; line-height: 1.6; color: #e2e8f0; font-family: 'Courier New', Consolas, monospace; white-space: pre; }
+code.hljs { font-size: 12.5px !important; line-height: 1.6 !important; padding: 18px 20px !important; }
+.serial { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 20px; font-family: 'Courier New', Consolas, monospace; font-size: 12.5px; line-height: 1.7; color: #6ee7b7; overflow-x: auto; white-space: pre; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.step { display: flex; gap: 14px; align-items: flex-start; }
+.step-n { width: 26px; height: 26px; border-radius: 50%; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.2); color: #22d3ee; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+.step-text code { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; color: #22d3ee; }
+.note { font-size: 12.5px; color: rgba(255,255,255,0.45); background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: 10px; padding: 12px 16px; line-height: 1.6; margin-top: 14px; }
+.note strong { color: rgba(245,158,11,0.8); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="back" href="../index.html">← Volver</a>
+    <span class="hdiv">/</span>
+    <span class="proj-num">DEMO</span>
+    <span class="hdiv">/</span>
+    <span class="proj-title">Prueba DHT11 Temp & Humidity</span>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Digital 1-Wire</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu sensor <strong>DHT11</strong>: lee la <strong>temperatura</strong>
+      (en °C) y la <strong>humedad relativa</strong> (en %) y lo imprime en el Monitor Serie. Calcula además
+      la <strong>sensación térmica</strong> a partir de ambos valores. Sirve para confirmar que el sensor
+      <strong>está bien conectado</strong> y que responde. Usa una sola línea de datos (protocolo 1-Wire
+      propio de Maxim), y solo necesita la librería <strong>DHT de Adafruit</strong>.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DHT11 — VCC (+)</td><td><span class="pin">3.3V</span></td><td>También funciona a 5V; 3.3V es lo más seguro para el ESP-32</td></tr>
+        <tr><td>DHT11 — DATA (S)</td><td><span class="pin">GPIO 4</span></td><td>Línea de datos digital</td></tr>
+        <tr><td>DHT11 — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Solo 3 cables.</strong> El módulo DHT11 del kit (placa azul de 3 pines) ya trae la resistencia
+      de pull-up incorporada, así que no necesitas añadir ninguna. Si usaras el sensor suelto de 4 patas,
+      pon una resistencia de <code>10 kΩ</code> entre <code>DATA</code> y <code>VCC</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code">#include &lt;DHT.h&gt;
+
+#define DHT_PIN   4        // DATA del DHT11 -&gt; GPIO 4
+#define DHT_TYPE  DHT11    // tipo de sensor
+
+DHT dht(DHT_PIN, DHT_TYPE);
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  dht.begin();
+  Serial.println("DHT11 listo. Leyendo cada 2 segundos...\n");
+}
+
+void loop() {
+  // El DHT11 necesita al menos 1-2 s entre lecturas
+  float hum  = dht.readHumidity();        // humedad relativa (%)
+  float temp = dht.readTemperature();     // temperatura (grados C)
+
+  // readHumidity/readTemperature devuelven NaN si la lectura falla
+  if (isnan(hum) || isnan(temp)) {
+    Serial.println("ERROR: no se pudo leer el DHT11. Revisa el cable de DATA.");
+    delay(2000);
+    return;
+  }
+
+  // Sensacion termica (heat index) calculada por la libreria
+  float st = dht.computeHeatIndex(temp, hum, false);
+
+  Serial.printf("Temp: %.1f C   Humedad: %.0f %%   Sensacion: %.1f C\n",
+                temp, hum, st);
+
+  delay(2000);
+}</code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">DHT11 listo. Leyendo cada 2 segundos...
+
+Temp: 24.0 C   Humedad: 48 %   Sensacion: 23.8 C
+Temp: 24.0 C   Humedad: 49 %   Sensacion: 23.9 C
+Temp: 26.0 C   Humedad: 61 %   Sensacion: 26.4 C
+Temp: 27.0 C   Humedad: 72 %   Sensacion: 28.1 C</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>Prueba a echar tu aliento</strong> cerca del sensor: la humedad sube enseguida y la temperatura
+      sube poco a poco. Si sostienes el sensor en la mano, la temperatura también sube. El DHT11 es lento y
+      poco preciso (±2 °C, ±5 % HR), así que no esperes decimales perfectos. ¡Si los valores reaccionan,
+      funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el DHT11: <code>+→3.3V</code>, <code>S(DATA)→GPIO 4</code> y <code>−→GND</code>. Solo 3 cables.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">En el Arduino IDE instala la librería <strong>"DHT sensor library"</strong> de Adafruit desde el <em>Gestor de librerías</em> (acepta instalar también <code>Adafruit Unified Sensor</code> si lo pide).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Echa tu aliento o calienta el sensor con la mano: <code>Temp</code> y <code>Humedad</code> deben cambiar en pocos segundos.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Sale "no se pudo leer el DHT11" o NaN?</strong> Revisa que el pin de <code>DATA</code> esté en
+      <code>GPIO 4</code>, que la alimentación esté firme y que no leas más rápido de cada 2 segundos. El
+      DHT11 necesita ese tiempo entre medidas.
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('code');
+  if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+      this.textContent = '✓ Copiado';
+      setTimeout(() => this.textContent = 'Copiar', 2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>
