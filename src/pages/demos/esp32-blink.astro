@@ -1,0 +1,70 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define LED 2
+
+void setup() {
+  pinMode(LED, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED, HIGH);
+  delay(500);
+  digitalWrite(LED, LOW);
+  delay(500);
+}`;
+---
+<ProjectLayout title="Demo · Blink — ESP32" label="DEMO" pageName="Blink — Prueba de placa">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">ESP-32 · LED integrado</span>
+    </div>
+    <p class="desc">
+      El "Hola Mundo" del hardware: hace parpadear el LED integrado del ESP-32 (GPIO 2) cada medio segundo.
+      Sirve para verificar que el IDE reconoce la placa, que el cable USB funciona y que la carga de código es exitosa.
+      Si este demo corre, el entorno está listo para cualquier proyecto.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>LED integrado</td>
+          <td><span class="pin">GPIO 2</span></td>
+          <td>Ya está soldado en la placa, no necesitas conectar nada</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Sin cables:</strong> Este demo no requiere componentes externos. Solo conecta el ESP-32 al
+      ordenador con el cable USB A→C.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Abre Arduino IDE y selecciona la placa <code>ESP32 Dev Module</code> en <strong>Herramientas → Placa</strong>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Selecciona el puerto correcto en <strong>Herramientas → Puerto</strong> (aparecerá como <code>COM#</code> en Windows o <code>/dev/ttyUSB0</code> en Linux/Mac).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Copia el código y pégalo en un sketch nuevo. Haz clic en <strong>Subir</strong> (flecha →).</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">El LED azul pequeño de la placa debe comenzar a parpadear cada 500 ms. ¡El entorno está listo!</div></div>
+    </div>
+  </section>
+</ProjectLayout>

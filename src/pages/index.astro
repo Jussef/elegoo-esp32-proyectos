@@ -1,0 +1,400 @@
+---
+import { components, CATS, DIFF_LABELS } from '../data/components.ts';
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kit Elegoo — Explorador de Proyectos</title>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">🛠️</div>
+    <div>
+      <div class="header-title">Kit Elegoo — Explorador de Proyectos</div>
+      <div class="header-sub" id="subtitle">Cargando...</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <input type="text" id="search" placeholder="Buscar componente...">
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+  <div id="overlay" class="overlay" hidden>
+    <div id="panel"></div>
+  </div>
+</main>
+
+<script define:vars={{ components, CATS, DIFF_LABELS }}>
+const CAT_LABELS = Object.fromEntries(CATS.map(c => [c.id, c.label]));
+
+let activeCat = "todo";
+let selected = null;
+
+document.getElementById("subtitle").textContent =
+  `${components.length} componentes · haz clic en uno para ver qué puedes construir`;
+
+const filtersEl = document.getElementById("filters");
+CATS.forEach(cat => {
+  const btn = document.createElement("button");
+  btn.className = "filter-btn" + (cat.id === "todo" ? " active" : "");
+  btn.textContent = cat.label;
+  btn.dataset.cat = cat.id;
+  btn.addEventListener("click", () => {
+    activeCat = cat.id;
+    selected = null;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  });
+  filtersEl.appendChild(btn);
+});
+
+document.getElementById("search").addEventListener("input", () => {
+  selected = null;
+  render();
+});
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const filtered = components.filter(c =>
+    (activeCat === "todo" || c.cat === activeCat) &&
+    (!q || c.name.toLowerCase().includes(q))
+  );
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">No se encontraron componentes</div>';
+  } else {
+    filtered.forEach(comp => {
+      const card = document.createElement("div");
+      card.className = "card" + (selected === comp.name ? " selected" : "");
+      card.innerHTML = `
+        <div class="card-icon">${comp.icon}</div>
+        <div class="card-name">${comp.name}</div>
+        <div class="card-qty">${comp.qty}</div>
+        <span class="pill pill-${comp.cat}">${CAT_LABELS[comp.cat]}</span>
+      `;
+      card.addEventListener("click", () => {
+        selected = selected === comp.name ? null : comp.name;
+        render();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  renderPanel();
+}
+
+function closeModal() {
+  selected = null;
+  render();
+}
+
+function renderPanel() {
+  const overlay = document.getElementById("overlay");
+  const panel = document.getElementById("panel");
+  const comp = selected ? components.find(c => c.name === selected) : null;
+
+  if (!comp) {
+    overlay.hidden = true;
+    panel.innerHTML = "";
+    document.body.classList.remove("modal-open");
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="panel">
+      <button class="modal-close" id="modalClose" aria-label="Cerrar">&times;</button>
+      <div class="panel-header">
+        <div class="panel-icon">${comp.icon}</div>
+        <div>
+          <div class="panel-name">${comp.name}</div>
+          <div class="panel-meta">${comp.qty} · ${CAT_LABELS[comp.cat]} · ${comp.projects.length} proyectos disponibles</div>
+        </div>
+        ${comp.demo ? `<button class="demo-btn" onclick="location.href='${comp.demo}'">⚡ Pruébame</button>` : ''}
+      </div>
+      <div class="projects">
+        ${comp.projects.map(p => `
+          <div class="project${p.link ? ' project-link' : ''}" ${p.link ? `onclick="location.href='${p.link}'"` : ''}>
+            <div class="proj-top">
+              <div class="proj-title">${p.title}</div>
+              <span class="diff diff-${p.diff}">${DIFF_LABELS[p.diff]}</span>
+            </div>
+            <div class="proj-desc">${p.desc}</div>
+            <div class="proj-parts"><span>Necesitas: </span>${p.parts}${p.link ? '<span class="proj-open"> — Ver proyecto →</span>' : ''}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  overlay.hidden = false;
+  document.body.classList.add("modal-open");
+  document.getElementById("modalClose").addEventListener("click", closeModal);
+}
+
+document.getElementById("overlay").addEventListener("click", (e) => {
+  if (e.target.id === "overlay") closeModal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && selected) closeModal();
+});
+
+render();
+</script>
+
+</body>
+</html>
+
+<style is:global>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f0f13;
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 18px 24px;
+  }
+
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .header-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(34,211,238,0.15);
+    border: 1px solid rgba(34,211,238,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  #search {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 16px;
+  }
+  #search::placeholder { color: rgba(255,255,255,0.25); }
+  #search:focus { border-color: rgba(34,211,238,0.5); background: rgba(255,255,255,0.07); }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.25); }
+  .filter-btn.active {
+    background: #22d3ee;
+    border-color: #22d3ee;
+    color: #0f0f13;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: left;
+  }
+  .card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+  .card.selected { background: rgba(255,255,255,0.09); border-color: rgba(34,211,238,0.55); }
+
+  .card-icon { font-size: 26px; margin-bottom: 10px; }
+  .card-name { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 4px; }
+  .card-qty { font-size: 11px; color: rgba(255,255,255,0.32); margin-bottom: 10px; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .pill-sensor { background: #d1fae5; color: #065f46; }
+  .pill-motor { background: #fef3c7; color: #92400e; }
+  .pill-display { background: #ede9fe; color: #5b21b6; }
+  .pill-comunicacion { background: #e0f2fe; color: #075985; }
+  .pill-control { background: #ffedd5; color: #9a3412; }
+  .pill-electronica { background: #f1f5f9; color: #475569; }
+  .pill-audio { background: #fce7f3; color: #9d174d; }
+
+  .panel {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .panel-icon { font-size: 32px; }
+  .panel-name { font-size: 16px; font-weight: 700; }
+  .panel-meta { font-size: 12px; color: rgba(255,255,255,0.38); margin-top: 3px; }
+
+  .demo-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.1);
+    color: #67e8f9;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .demo-btn:hover { background: #22d3ee; border-color: #22d3ee; color: #0f0f13; }
+
+  .projects {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    padding: 20px 24px;
+  }
+
+  .project {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .proj-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .proj-title { font-size: 13px; font-weight: 600; line-height: 1.4; }
+
+  .diff {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .diff-facil { background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); }
+  .diff-medio { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+  .diff-avanzado { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+
+  .proj-desc { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.55; }
+
+  .proj-parts {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 11px;
+    color: rgba(34,211,238,0.65);
+    line-height: 1.5;
+  }
+  .proj-parts span { color: rgba(255,255,255,0.25); }
+  .proj-open { color: rgba(34,211,238,0.7); font-style: normal; }
+  .project-link { cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  .project-link:hover { background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.3); }
+
+  .empty { text-align: center; padding: 40px; color: rgba(255,255,255,0.25); font-size: 14px; grid-column: 1 / -1; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px;
+    overflow-y: auto;
+    z-index: 100;
+    animation: fadeIn 0.18s ease;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay .panel { max-width: 760px; width: 100%; position: relative; margin: auto; background: #580b19; border: 1px solid #ca0025; }
+  .overlay .panel-header { padding-right: 58px; }
+
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.6);
+    font-size: 20px; line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s;
+    z-index: 2;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+  body.modal-open { overflow: hidden; }
+</style>

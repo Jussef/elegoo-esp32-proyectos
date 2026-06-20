@@ -1,0 +1,186 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Wire.h&gt;
+#include &lt;Adafruit_GFX.h&gt;
+#include &lt;Adafruit_SSD1306.h&gt;
+#include &lt;Keypad.h&gt;
+#include &lt;Stepper.h&gt;
+
+#define ANCHO 128
+#define ALTO  64
+Adafruit_SSD1306 oled(ANCHO, ALTO, &amp;Wire, -1);
+
+const int STEPS_REV = 2048;
+#define IN1 19
+#define IN2 18
+#define IN3 5
+#define IN4 17
+Stepper motor(STEPS_REV, IN1, IN3, IN2, IN4);
+const long PASOS_CERROJO = 1024;   // medio giro para trabar / destrabar
+
+const byte FILAS = 4, COLS = 4;
+char teclas[FILAS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte pinFilas[FILAS] = {13, 14, 27, 26};
+byte pinCols[COLS]   = {25, 33, 32, 4};
+Keypad teclado = Keypad(makeKeymap(teclas), pinFilas, pinCols, FILAS, COLS);
+
+String CLAVE   = "1234";   // cambia tu codigo aqui
+String entrada = "";
+bool   trabada = true;     // arranca cerrada
+
+void apagarBobinas() {
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+}
+
+void mostrar(String l1, String l2) {
+  oled.clearDisplay();
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setTextSize(1);  oled.setCursor(0, 0);  oled.println(l1);
+  oled.setTextSize(2);  oled.setCursor(0, 30); oled.println(l2);
+  oled.display();
+}
+
+void destrabar() {
+  if (!trabada) return;
+  motor.step(PASOS_CERROJO);
+  trabada = false;
+  apagarBobinas();
+}
+
+void trabar() {
+  if (trabada) return;
+  motor.step(-PASOS_CERROJO);
+  trabada = true;
+  apagarBobinas();
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  motor.setSpeed(12);
+  mostrar("Caja fuerte", "CERRADA");
+}
+
+void loop() {
+  char k = teclado.getKey();
+  if (!k) return;
+
+  if (k == '#') {                       // confirmar codigo
+    if (entrada == CLAVE) {
+      mostrar("Clave correcta", "ABIERTA");
+      destrabar();
+    } else {
+      mostrar("Clave incorrecta", "ERROR");
+    }
+    entrada = "";
+    delay(1500);
+    if (trabada) mostrar("Ingresa clave", "----");
+    else         mostrar("* para cerrar", "ABIERTA");
+  }
+  else if (k == '*') {                  // borrar o cerrar
+    if (!trabada) {
+      trabar();
+      mostrar("Caja fuerte", "CERRADA");
+    } else {
+      entrada = "";
+      mostrar("Ingresa clave", "----");
+    }
+  }
+  else {                                // digito
+    if (entrada.length() &lt; 4) entrada += k;
+    String mask = "";
+    for (int i = 0; i &lt; entrada.length(); i++) mask += "*";
+    while (mask.length() &lt; 4) mask += "-";
+    mostrar("Ingresa clave", mask);
+  }
+}`;
+---
+<ProjectLayout title="Stepper 04 · Caja Fuerte con Código — ESP32" label="STEPPER 04" pageName="Caja Fuerte con Código">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge medio">Intermedio</span>
+      <span class="cat-tag">Motores · Teclado · OLED</span>
+    </div>
+    <p class="desc">
+      Una cerradura motorizada: el motor paso a paso hace de <strong>cerrojo</strong> que gira para
+      trabar o destrabar. Ingresas un código en el <strong>teclado matricial 4×4</strong> y, si es
+      correcto, el motor abre; la pantalla <strong>OLED</strong> muestra el estado y los dígitos
+      enmascarados con asteriscos. Pulsando <code>*</code> borras lo escrito o cierras de nuevo, y con
+      <code>#</code> confirmas el código.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Stepper Motor 28BYJ-48</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ULN2003 Driver Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Membrane Switch Keypad 4×4</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">0.96" OLED Display (I2C)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Power Supply 5V externa (recomendada)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Protoboard + cables Dupont</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ULN2003 — IN1 / IN2 / IN3 / IN4</td><td><span class="pin">19 / 18 / 5 / 17</span></td><td>Bobinas del motor</td></tr>
+        <tr><td>ULN2003 — VCC (+) / GND (−)</td><td><span class="pin">5V ext. / GND</span></td><td>Fuente externa, GND común</td></tr>
+        <tr><td>OLED — SDA</td><td><span class="pin">GPIO 21</span></td><td>Bus I2C (dirección 0x3C)</td></tr>
+        <tr><td>OLED — SCL</td><td><span class="pin">GPIO 22</span></td><td>—</td></tr>
+        <tr><td>OLED — VCC / GND</td><td><span class="pin">3.3V / GND</span></td><td>—</td></tr>
+        <tr><td>Keypad — Filas 1-4</td><td><span class="pin">13 / 14 / 27 / 26</span></td><td>Pines de fila (izq. del conector)</td></tr>
+        <tr><td>Keypad — Columnas 1-4</td><td><span class="pin">25 / 33 / 32 / 4</span></td><td>Pines de columna</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Pines del teclado:</strong> el conector del keypad tiene 8 patas. De izquierda a derecha
+      suelen ser Fila1…Fila4, Col1…Col4. Si alguna tecla responde mal, simplemente reordena los pines
+      en los arreglos <code>pinFilas[]</code> / <code>pinCols[]</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Instala dos librerías desde el Gestor: <code>Adafruit SSD1306</code> (con su dependencia <code>Adafruit GFX</code>) y <code>Keypad</code> de Mark Stanley. <code>Stepper.h</code> ya viene incluida.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta la OLED por I2C (<code>21/22</code>), el teclado a los 8 pines indicados y el motor a la placa ULN2003 alimentada con la <strong>fuente de 5V externa</strong>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Antes de encender, deja el cerrojo en posición <strong>cerrada</strong>: el código asume que arranca trabado.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Escribe el código (por defecto <code>1234</code>) y pulsa <code>#</code>. Si es correcto, el motor destraba. Pulsa <code>*</code> para cerrar otra vez.</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-text">Cambia tu clave en la línea <code>String CLAVE = "1234";</code> y vuelve a subir el código.</div></div>
+    </div>
+    <div class="note">
+      <strong>Seguridad y mejoras:</strong> si la OLED no enciende, prueba la dirección <code>0x3D</code> en
+      <code>oled.begin(...)</code>. Como mejora puedes bloquear el teclado unos segundos tras 3 intentos
+      fallidos, añadir un <strong>buzzer</strong> para el "bip" de tecla y un <strong>LED rojo/verde</strong>
+      para el estado. <br /><br />
+      <strong>Nota mecánica:</strong> el 28BYJ-48 tiene poca fuerza, así que sirve como pestillo de una
+      cajita ligera o maqueta, no como cerradura de seguridad real.
+    </div>
+  </section>
+</ProjectLayout>

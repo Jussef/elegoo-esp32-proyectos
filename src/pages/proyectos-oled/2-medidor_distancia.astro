@@ -1,0 +1,172 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Wire.h&gt;
+#include &lt;Adafruit_GFX.h&gt;
+#include &lt;Adafruit_SSD1306.h&gt;
+
+#define SCREEN_W   128
+#define SCREEN_H    64
+#define OLED_RESET  -1
+#define TRIG_PIN     5
+#define ECHO_PIN    18
+
+Adafruit_SSD1306 oled(SCREEN_W, SCREEN_H, &amp;Wire, OLED_RESET);
+
+long medirCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  long us = pulseIn(ECHO_PIN, HIGH, 25000UL);  // timeout 25 ms = ~4 m
+  return (us == 0) ? -1 : us * 17 / 1000;      // us * 0.017 cm/us
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("Error: OLED no encontrado");
+    while (true);
+  }
+
+  oled.setTextColor(SSD1306_WHITE);
+  oled.clearDisplay();
+  oled.setTextSize(1);
+  oled.setCursor(12, 28);
+  oled.print("Medidor HC-SR04");
+  oled.display();
+  delay(1500);
+}
+
+void loop() {
+  long dist = medirCm();
+
+  Serial.print("Distancia: ");
+  Serial.print(dist);
+  Serial.println(" cm");
+
+  oled.clearDisplay();
+
+  // Titulo
+  oled.setTextSize(1);
+  oled.setCursor(28, 1);
+  oled.print("DISTANCIA");
+  oled.drawLine(0, 11, 127, 11, SSD1306_WHITE);
+
+  if (dist &lt; 0 || dist &gt; 400) {
+    oled.setCursor(14, 26);
+    oled.print("Sin objeto cercano");
+    oled.setCursor(30, 40);
+    oled.print("&gt; 4 metros");
+  } else {
+    // Valor grande centrado
+    char buf[10];
+    sprintf(buf, "%ld cm", dist);
+    oled.setTextSize(3);
+    int tw = strlen(buf) * 18;
+    int cx = (128 - tw) / 2;
+    if (cx &lt; 0) cx = 0;
+    oled.setCursor(cx, 15);
+    oled.print(buf);
+
+    // Etiquetas de barra
+    oled.setTextSize(1);
+    oled.setCursor(2, 44);
+    oled.print("Lejos");
+    oled.setCursor(86, 44);
+    oled.print("Cerca");
+
+    // Barra de proximidad: mas cerca = barra mas llena (izq -> der)
+    oled.drawRect(2, 54, 124, 8, SSD1306_WHITE);
+    if (dist &lt; 100) {
+      long fill = map(dist, 0, 100, 124, 0);
+      oled.fillRect(2, 54, (int)fill, 8, SSD1306_WHITE);
+    }
+  }
+
+  oled.display();
+  delay(150);
+}`;
+---
+<ProjectLayout title="OLED 02 · Medidor de Distancia — ESP32" label="OLED 02" pageName="Medidor de Distancia">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge facil">Principiante</span>
+      <span class="cat-tag">Pantallas · Sensores</span>
+    </div>
+    <p class="desc">
+      El sensor ultrasónico HC-SR04 emite un pulso de sonido y mide el tiempo que tarda en rebotar.
+      La pantalla OLED muestra la distancia en centímetros en tiempo real con un número grande
+      y una barra de proximidad: cuanto más llena, más cerca está el objeto.
+      Rango útil: 2 cm a 4 metros.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">0.96" OLED Display (I2C)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Ultrasonic Sensor HC-SR04</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Protoboard + cables Dupont</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>OLED — SDA</td><td><span class="pin">GPIO 21</span></td><td>I2C datos</td></tr>
+        <tr><td>OLED — SCL</td><td><span class="pin">GPIO 22</span></td><td>I2C reloj</td></tr>
+        <tr><td>OLED — VCC</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
+        <tr><td>OLED — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>HC-SR04 — VCC</td><td><span class="warn">3.3V ⚠</span></td><td>Usar 3.3V (no 5V) para proteger el pin ECHO del ESP32</td></tr>
+        <tr><td>HC-SR04 — TRIG</td><td><span class="pin">GPIO 5</span></td><td>Salida digital del ESP32</td></tr>
+        <tr><td>HC-SR04 — ECHO</td><td><span class="pin">GPIO 18</span></td><td>Entrada digital — seguro a 3.3V</td></tr>
+        <tr><td>HC-SR04 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Importante:</strong> El HC-SR04 alimentado desde 5V genera una señal de 5V en el pin ECHO,
+      lo que puede dañar el ESP32 (máx. 3.3V). Alimentándolo desde 3.3V el ECHO también sale a 3.3V
+      y el sensor funciona correctamente a esa tensión.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">En el Gestor de Librerías de Arduino IDE instala <code>Adafruit SSD1306</code> (instalará <code>Adafruit GFX</code> como dependencia automáticamente).</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el OLED y el HC-SR04 según la tabla. <strong>Importante:</strong> alimenta el HC-SR04 desde el pin <code>3.3V</code> del ESP32, no desde el de 5V.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y apunta el sensor a distintos objetos. La distancia se refresca cada 150 ms. También puedes verla en el Monitor Serie a 115200 baud.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">La barra inferior se llena a medida que un objeto se acerca a 1 metro. Para 0–100 cm la barra refleja la proximidad en tiempo real.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Si ves lecturas erráticas, aumenta el <code>delay(150)</code> a <code>delay(300)</code>.
+      El sensor necesita tiempo para que el eco anterior se disipe antes de la siguiente medición,
+      especialmente en espacios cerrados o con superficies muy reflectantes.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.warn { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(245,158,11,0.08); color: #fcd34d; padding: 2px 8px; border-radius: 5px; border: 1px solid rgba(245,158,11,0.2); white-space: nowrap; }
+</style>

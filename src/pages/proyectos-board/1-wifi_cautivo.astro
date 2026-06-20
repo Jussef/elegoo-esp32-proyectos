@@ -1,0 +1,121 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+#include &lt;DNSServer.h&gt;
+
+const char* AP_SSID  = "ESP32-Portal";   // Nombre del punto de acceso WiFi
+const char* AP_PASS  = "";               // Sin contraseña (portal abierto)
+const byte  DNS_PORT = 53;
+
+DNSServer dnsServer;
+WebServer server(80);
+
+// Pagina HTML que se muestra al conectarse
+const char PORTAL[] = R"rawliteral(
+&lt;!DOCTYPE html&gt;&lt;html lang="es"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
+&lt;title&gt;Portal ESP32&lt;/title&gt;
+&lt;style&gt;
+  body { font-family:sans-serif; background:#111; color:#fff; display:flex;
+         align-items:center; justify-content:center; min-height:100vh; margin:0; }
+  .card { background:#1a1a2e; border-radius:16px; padding:32px;
+          max-width:360px; width:90%; text-align:center; }
+  h1 { color:#22d3ee; margin-bottom:12px; }
+  p  { color:rgba(255,255,255,.65); margin-bottom:24px; font-size:14px; line-height:1.5; }
+  button { background:#22d3ee; color:#111; border:none; border-radius:10px;
+           padding:13px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class="card"&gt;
+  &lt;h1&gt;Portal ESP32&lt;/h1&gt;
+  &lt;p&gt;Conectado al punto de acceso ESP32.&lt;br&gt;Haz clic para ingresar.&lt;/p&gt;
+  &lt;button onclick="this.textContent='Conectado!'"&gt;Ingresar&lt;/button&gt;
+&lt;/div&gt;
+&lt;/body&gt;&lt;/html&gt;
+)rawliteral";
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+
+  Serial.println("=== Portal WiFi Cautivo ===");
+  Serial.print("SSID: ");
+  Serial.println(AP_SSID);
+  Serial.print("IP:   ");
+  Serial.println(WiFi.softAPIP());
+
+  // Redirige todo el DNS al ESP-32
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+
+  // Cualquier URL devuelve la pagina del portal
+  server.onNotFound([]() {
+    server.send(200, "text/html; charset=utf-8", PORTAL);
+  });
+
+  server.begin();
+  Serial.println("Listo. Conectate al WiFi y abre cualquier URL.");
+}
+
+void loop() {
+  dnsServer.processNextRequest();
+  server.handleClient();
+}`;
+---
+<ProjectLayout title="01 · Portal WiFi Cautivo — ESP32" label="PROYECTO 01" pageName="Portal WiFi Cautivo">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge facil">Principiante</span>
+      <span class="cat-tag">WiFi · Redes</span>
+    </div>
+    <p class="desc">
+      El ESP-32 crea su propio punto de acceso WiFi. Cuando alguien se conecta, todo el tráfico DNS
+      se redirige automáticamente al ESP-32, que muestra una página de bienvenida — igual que los
+      portales de hoteles o aeropuertos. No se necesita router ni internet.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Cable USB A → C</span><span class="cqty">1 PC</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <p class="no-wiring">Sin conexiones externas — solo se usa el ESP-32 conectado por USB a la computadora.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Instala las librerías <code>WiFi</code>, <code>WebServer</code> y <code>DNSServer</code> (incluidas en el paquete ESP32 de Arduino IDE).</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Cambia <code>AP_SSID</code> por el nombre de red WiFi que quieras mostrar (ej: <code>"Gratis-Cafe"</code>).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código al ESP-32. Verifica en el Monitor Serie (115200 baud) que aparezca la IP del punto de acceso.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Desde tu teléfono o computadora, busca la red WiFi con el nombre que pusiste, conéctate y abre cualquier URL — el portal aparecerá automáticamente.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Puedes personalizar la página HTML dentro de la variable <code>PORTAL[]</code>.
+      Agrega un formulario, un logo o cualquier contenido que quieras mostrar a los visitantes.
+    </div>
+  </section>
+</ProjectLayout>

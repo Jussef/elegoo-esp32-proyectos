@@ -1,0 +1,132 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define PIN_TRIG  5    // TRIG -&gt; GPIO 5  (salida)
+#define PIN_ECHO  18   // ECHO -&gt; GPIO 18 (entrada, idealmente con divisor)
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  pinMode(PIN_TRIG, OUTPUT);
+  pinMode(PIN_ECHO, INPUT);
+  digitalWrite(PIN_TRIG, LOW);
+  Serial.println("HC-SR04 listo. Midiendo distancia...\n");
+}
+
+void loop() {
+  // 1) Pulso de disparo de 10 us en TRIG
+  digitalWrite(PIN_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_TRIG, LOW);
+
+  // 2) Medir cuanto dura el eco (en microsegundos). Timeout 30 ms (~5 m)
+  long dur = pulseIn(PIN_ECHO, HIGH, 30000);
+
+  if (dur == 0) {
+    Serial.println("Fuera de rango (sin eco).");
+  } else {
+    // 3) Distancia = (tiempo * velocidad del sonido) / 2
+    //    velocidad ~ 0.0343 cm/us, dividido entre 2 (ida y vuelta)
+    float cm = dur * 0.0343 / 2.0;
+    Serial.printf("Distancia: %.1f cm\n", cm);
+  }
+
+  delay(300);
+}`;
+---
+<ProjectLayout title="Demo · Prueba Ultrasonic Sensor (HC-SR04) — ESP32" label="DEMO" pageName="Prueba Ultrasonic Sensor (HC-SR04)">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Distancia</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu sensor ultrasónico <strong>HC-SR04</strong>: mide la
+      <strong>distancia</strong> a un objeto enviando un pulso de sonido por <code>TRIG</code> y midiendo
+      cuánto tarda el eco en volver por <code>ECHO</code>. Imprime la distancia en <strong>centímetros</strong>
+      en el Monitor Serie. Sirve para confirmar que el sensor <strong>está bien conectado</strong> y que
+      reacciona al acercar o alejar la mano. No necesita librerías externas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>HC-SR04 — VCC</td><td><span class="pin">5V (VIN)</span></td><td>El HC-SR04 necesita 5V para funcionar bien</td></tr>
+        <tr><td>HC-SR04 — TRIG</td><td><span class="pin">GPIO 5</span></td><td>Salida: dispara el pulso ultrasónico</td></tr>
+        <tr><td>HC-SR04 — ECHO</td><td><span class="pin">GPIO 18</span></td><td>Entrada: devuelve el eco (¡ver nota!)</td></tr>
+        <tr><td>HC-SR04 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>¡Atención con ECHO!</strong> El pin <code>ECHO</code> entrega 5V y los GPIO del ESP-32 son de
+      <code>3.3V</code>. Lo ideal es bajar ese voltaje con un <strong>divisor de tensión</strong> (por
+      ejemplo <code>1 kΩ</code> y <code>2 kΩ</code>) entre <code>ECHO</code> y el GPIO. Para una prueba corta
+      suele tolerarse directo, pero el divisor protege tu placa.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">HC-SR04 listo. Midiendo distancia...
+
+Distancia: 42.3 cm
+Distancia: 18.6 cm
+Distancia: 7.1 cm
+Distancia: 25.4 cm
+Fuera de rango (sin eco).</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>Acerca y aleja la mano</strong> frente al sensor: la distancia debe bajar y subir al instante.
+      Si apuntas al vacío o a más de ~4 m, saldrá <code>Fuera de rango</code>. El HC-SR04 mide bien desde
+      unos <code>2 cm</code> hasta <code>~4 m</code>. ¡Si los números reaccionan, funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el HC-SR04: <code>VCC→5V</code>, <code>TRIG→GPIO 5</code>, <code>ECHO→GPIO 18</code> (mejor con divisor) y <code>GND→GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text"><strong>No hace falta instalar ninguna librería</strong>: el código usa <code>pulseIn()</code>, que ya viene con el core del ESP-32.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Pon la mano o un objeto plano frente al sensor y muévelo: la distancia debe cambiar en tiempo real.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Siempre sale "Fuera de rango" o valores absurdos?</strong> Revisa que <code>VCC</code> sea
+      <code>5V</code> (no 3.3V), que <code>TRIG</code> y <code>ECHO</code> no estén intercambiados y que el
+      objeto sea plano (las superficies blandas o en ángulo dispersan el eco). Apunta a una pared para una
+      prueba fiable.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>

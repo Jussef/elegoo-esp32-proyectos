@@ -1,0 +1,136 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Stepper.h&gt;
+
+const int STEPS_REV = 2048;     // 28BYJ-48: pasos por vuelta completa
+
+#define IN1 19
+#define IN2 18
+#define IN3 5
+#define IN4 17
+#define LDR_IZQ 34              // fotorresistor izquierdo (divisor)
+#define LDR_DER 35             // fotorresistor derecho (divisor)
+
+// El orden IN1, IN3, IN2, IN4 da la secuencia correcta del 28BYJ-48 con ULN2003
+Stepper motor(STEPS_REV, IN1, IN3, IN2, IN4);
+
+const int  TOLERANCIA = 120;    // diferencia minima para moverse (zona muerta)
+const int  PASO       = 16;     // cuantos pasos avanza por cada ajuste
+const long LIMITE     = 1024;   // tope de giro a cada lado (~180 grados) evita enredar cables
+long posActual = 0;             // posicion acumulada, en pasos
+
+void apagarBobinas() {
+  // Libera las bobinas para que el motor no se caliente entre ajustes
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+}
+
+void setup() {
+  Serial.begin(115200);
+  motor.setSpeed(12);   // RPM
+  Serial.println("Seguidor de luz listo.");
+}
+
+void loop() {
+  int izq = analogRead(LDR_IZQ);
+  int der = analogRead(LDR_DER);
+  int dif = izq - der;          // positivo = mas luz a la izquierda
+
+  if (abs(dif) &gt; TOLERANCIA) {
+    int dir = (dif &gt; 0) ? -1 : 1;            // gira hacia el lado mas iluminado
+    long nueva = posActual + (long)dir * PASO;
+
+    // Solo se mueve si no supera el tope de giro a ese lado
+    if (nueva &gt;= -LIMITE &amp;&amp; nueva &lt;= LIMITE) {
+      motor.step(dir * PASO);
+      posActual = nueva;
+    }
+  }
+
+  apagarBobinas();
+  Serial.printf("Izq:%4d  Der:%4d  Dif:%5d  Pos:%5ld\n", izq, der, dif, posActual);
+  delay(120);
+}`;
+---
+<ProjectLayout title="Stepper 03 · Seguidor de Luz — ESP32" label="STEPPER 03" pageName="Seguidor de Luz">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge medio">Intermedio</span>
+      <span class="cat-tag">Motores · Sensores · Lazo cerrado</span>
+    </div>
+    <p class="desc">
+      Un seguidor solar de un eje: el motor paso a paso <strong>orienta una superficie hacia la
+      luz más intensa</strong>. Dos fotorresistores (uno a la izquierda y otro a la derecha) miden
+      cuánta luz reciben; si uno detecta más que el otro, el motor gira hacia ese lado hasta
+      <strong>igualar ambas lecturas</strong>. Eso es <strong>control en lazo cerrado</strong>: el
+      sistema corrige solo hasta alcanzar el equilibrio, el mismo principio de los paneles solares
+      que siguen al sol durante el día.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Stepper Motor 28BYJ-48</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ULN2003 Driver Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Photoresistor (LDR)</span><span class="cqty">2 PCS</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Resistor 10K (divisor de cada LDR)</span><span class="cqty">2 PCS</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Power Supply 5V externa (recomendada)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Protoboard + cables Dupont</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ULN2003 — IN1</td><td><span class="pin">GPIO 19</span></td><td>Bobina 1</td></tr>
+        <tr><td>ULN2003 — IN2</td><td><span class="pin">GPIO 18</span></td><td>Bobina 2</td></tr>
+        <tr><td>ULN2003 — IN3</td><td><span class="pin">GPIO 5</span></td><td>Bobina 3</td></tr>
+        <tr><td>ULN2003 — IN4</td><td><span class="pin">GPIO 17</span></td><td>Bobina 4</td></tr>
+        <tr><td>ULN2003 — VCC (+)</td><td><span class="pin">5V ext.</span></td><td>Usa la fuente externa, NO el 5V del ESP-32</td></tr>
+        <tr><td>ULN2003 — GND (−)</td><td><span class="pin">GND</span></td><td>GND común con ESP-32 y fuente</td></tr>
+        <tr><td>LDR izquierdo — nodo</td><td><span class="pin">GPIO 34</span></td><td>LDR a 3.3V, resistencia 10K a GND</td></tr>
+        <tr><td>LDR derecho — nodo</td><td><span class="pin">GPIO 35</span></td><td>LDR a 3.3V, resistencia 10K a GND</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Montaje de los LDR:</strong> colócalos uno a cada lado de una pequeña pared/separador
+      (cartón) sobre la plataforma que gira. Así, cuando la luz no viene de frente, uno queda en
+      sombra y el otro iluminado, y el motor corrige hacia la luz.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Arma dos divisores idénticos: cada LDR entre <code>3.3V</code> y su pin (<code>GPIO 34</code> / <code>GPIO 35</code>), y una resistencia de <code>10K</code> de ese pin a <code>GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Monta los dos LDR sobre la plataforma del motor, separados por una pared de cartón para que se hagan sombra entre sí.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a 115200. Mueve una linterna alrededor: el motor girará para "perseguir" la luz hasta centrarla.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Si la plataforma <strong>se aleja</strong> de la luz en vez de seguirla, invierte la dirección: cambia <code>? -1 : 1</code> por <code>? 1 : -1</code>.</div></div>
+    </div>
+    <div class="note">
+      <strong>Ajustes finos:</strong> si vibra o "persigue" de más, sube <code>TOLERANCIA</code> (zona muerta
+      más amplia). Si reacciona muy lento, sube <code>PASO</code>. El <code>LIMITE</code> evita que el motor
+      dé vueltas sin fin y enrede los cables de los LDR. <br /><br />
+      <strong>Para dos ejes</strong> necesitarías un segundo motor + ULN2003 y dos LDR más (arriba/abajo),
+      repitiendo exactamente la misma lógica de comparación.
+    </div>
+  </section>
+</ProjectLayout>

@@ -1,0 +1,129 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;DHT.h&gt;
+
+#define DHT_PIN   4        // DATA del DHT11 -&gt; GPIO 4
+#define DHT_TYPE  DHT11    // tipo de sensor
+
+DHT dht(DHT_PIN, DHT_TYPE);
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  dht.begin();
+  Serial.println("DHT11 listo. Leyendo cada 2 segundos...\n");
+}
+
+void loop() {
+  // El DHT11 necesita al menos 1-2 s entre lecturas
+  float hum  = dht.readHumidity();        // humedad relativa (%)
+  float temp = dht.readTemperature();     // temperatura (grados C)
+
+  // readHumidity/readTemperature devuelven NaN si la lectura falla
+  if (isnan(hum) || isnan(temp)) {
+    Serial.println("ERROR: no se pudo leer el DHT11. Revisa el cable de DATA.");
+    delay(2000);
+    return;
+  }
+
+  // Sensacion termica (heat index) calculada por la libreria
+  float st = dht.computeHeatIndex(temp, hum, false);
+
+  Serial.printf("Temp: %.1f C   Humedad: %.0f %%   Sensacion: %.1f C\n",
+                temp, hum, st);
+
+  delay(2000);
+}`;
+---
+<ProjectLayout title="Demo · Prueba DHT11 Temp &amp; Humidity — ESP32" label="DEMO" pageName="Prueba DHT11 Temp &amp; Humidity">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Digital 1-Wire</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu sensor <strong>DHT11</strong>: lee la <strong>temperatura</strong>
+      (en °C) y la <strong>humedad relativa</strong> (en %) y lo imprime en el Monitor Serie. Calcula además
+      la <strong>sensación térmica</strong> a partir de ambos valores. Sirve para confirmar que el sensor
+      <strong>está bien conectado</strong> y que responde. Usa una sola línea de datos (protocolo 1-Wire
+      propio de Maxim), y solo necesita la librería <strong>DHT de Adafruit</strong>.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DHT11 — VCC (+)</td><td><span class="pin">3.3V</span></td><td>También funciona a 5V; 3.3V es lo más seguro para el ESP-32</td></tr>
+        <tr><td>DHT11 — DATA (S)</td><td><span class="pin">GPIO 4</span></td><td>Línea de datos digital</td></tr>
+        <tr><td>DHT11 — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Solo 3 cables.</strong> El módulo DHT11 del kit (placa azul de 3 pines) ya trae la resistencia
+      de pull-up incorporada, así que no necesitas añadir ninguna. Si usaras el sensor suelto de 4 patas,
+      pon una resistencia de <code>10 kΩ</code> entre <code>DATA</code> y <code>VCC</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">DHT11 listo. Leyendo cada 2 segundos...
+
+Temp: 24.0 C   Humedad: 48 %   Sensacion: 23.8 C
+Temp: 24.0 C   Humedad: 49 %   Sensacion: 23.9 C
+Temp: 26.0 C   Humedad: 61 %   Sensacion: 26.4 C
+Temp: 27.0 C   Humedad: 72 %   Sensacion: 28.1 C</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>Prueba a echar tu aliento</strong> cerca del sensor: la humedad sube enseguida y la temperatura
+      sube poco a poco. Si sostienes el sensor en la mano, la temperatura también sube. El DHT11 es lento y
+      poco preciso (±2 °C, ±5 % HR), así que no esperes decimales perfectos. ¡Si los valores reaccionan,
+      funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el DHT11: <code>+→3.3V</code>, <code>S(DATA)→GPIO 4</code> y <code>−→GND</code>. Solo 3 cables.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">En el Arduino IDE instala la librería <strong>"DHT sensor library"</strong> de Adafruit desde el <em>Gestor de librerías</em> (acepta instalar también <code>Adafruit Unified Sensor</code> si lo pide).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Echa tu aliento o calienta el sensor con la mano: <code>Temp</code> y <code>Humedad</code> deben cambiar en pocos segundos.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Sale "no se pudo leer el DHT11" o NaN?</strong> Revisa que el pin de <code>DATA</code> esté en
+      <code>GPIO 4</code>, que la alimentación esté firme y que no leas más rápido de cada 2 segundos. El
+      DHT11 necesita ese tiempo entre medidas.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>

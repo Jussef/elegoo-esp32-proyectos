@@ -1,0 +1,151 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;WiFi.h&gt;
+
+void linea(int len = 50) {
+  for (int i = 0; i &lt; len; i++) Serial.print('-');
+  Serial.println();
+}
+
+String cifrado(wifi_auth_mode_t enc) {
+  switch (enc) {
+    case WIFI_AUTH_OPEN:         return "Abierta";
+    case WIFI_AUTH_WEP:          return "WEP";
+    case WIFI_AUTH_WPA_PSK:      return "WPA";
+    case WIFI_AUTH_WPA2_PSK:     return "WPA2";
+    case WIFI_AUTH_WPA_WPA2_PSK: return "WPA/WPA2";
+    case WIFI_AUTH_WPA3_PSK:     return "WPA3";
+    default:                      return "Otro";
+  }
+}
+
+String barra(int rssi) {
+  if (rssi &gt;= -50) return "████████ Excelente";
+  if (rssi &gt;= -60) return "██████░░ Bueno";
+  if (rssi &gt;= -70) return "████░░░░ Regular";
+  if (rssi &gt;= -80) return "██░░░░░░ Debil";
+  return              "░░░░░░░░ Muy debil";
+}
+
+void escanear() {
+  Serial.println("\n=== Buscando redes WiFi... ===\n");
+
+  int n = WiFi.scanNetworks();
+
+  if (n == 0) {
+    Serial.println("No se encontraron redes.");
+    return;
+  }
+
+  Serial.printf("%-30s %4s  %3s  %-12s  %s\n",
+    "SSID", "dBm", "Ch", "Cifrado", "Senal");
+  linea();
+
+  for (int i = 0; i &lt; n; i++) {
+    String ssid = WiFi.SSID(i);
+    if (ssid.length() &gt; 28) ssid = ssid.substring(0, 26) + "..";
+
+    Serial.printf("%-30s %4d  %3d  %-12s  %s\n",
+      ssid.c_str(),
+      WiFi.RSSI(i),
+      WiFi.channel(i),
+      cifrado(WiFi.encryptionType(i)).c_str(),
+      barra(WiFi.RSSI(i)).c_str()
+    );
+  }
+
+  linea();
+  Serial.printf("Total: %d redes encontradas\n", n);
+  WiFi.scanDelete();
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  Serial.println("Escaner WiFi listo.");
+}
+
+void loop() {
+  escanear();
+  Serial.println("\nEsperando 10 segundos...");
+  delay(10000);
+}`;
+---
+<ProjectLayout title="04 · Escáner de Redes WiFi — ESP32" label="PROYECTO 04" pageName="Escáner de Redes WiFi">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge facil">Principiante</span>
+      <span class="cat-tag">WiFi · Diagnóstico</span>
+    </div>
+    <p class="desc">
+      El ESP-32 escanea todas las redes WiFi cercanas y las lista en el Monitor Serie con SSID,
+      intensidad de señal en dBm, canal, tipo de cifrado y una barra visual de señal.
+      El escaneo se repite cada 10 segundos automáticamente. No requiere conectarse a ninguna red.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Cable USB A → C</span><span class="cqty">1 PC</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <p class="no-wiring">Sin conexiones externas — solo el ESP-32 conectado por USB. La salida se ve en el Monitor Serie.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Ejemplo de salida en Monitor Serie</div>
+    <div class="preview">
+      <div class="preview-header">Monitor Serie — 115200 baud</div>
+      <div class="preview-body">=== Buscando redes WiFi... ===
+
+SSID                           dBm   Ch   Cifrado
+--------------------------------------------------
+MiCasaWiFi                     -42    6   WPA2      ████████ Excelente
+Vecino_5G                      -61   11   WPA2      ██████░░ Bueno
+AndroidAP_7f3a                 -74    1   WPA/WPA2  ████░░░░ Regular
+MOVISTAR_2412                  -83    6   WPA2      ██░░░░░░ Debil
+--------------------------------------------------
+Total: 4 redes encontradas
+
+Esperando 10 segundos...</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">No necesitas modificar nada — el código funciona tal cual.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Sube el código al ESP-32 y abre el Monitor Serie a <code>115200</code> baud.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Verás la lista de redes cercanas. El escaneo se repite cada 10 segundos.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Cambia el <code>delay(10000)</code> del final del <code>loop()</code> para hacer el escaneo más rápido o lento.
+      Un valor de <code>5000</code> escanea cada 5 segundos.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.preview { background: #0a0a10; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.preview-header { padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: rgba(255,255,255,0.3); }
+.preview-body { padding: 14px 18px; font-family: 'Courier New', monospace; font-size: 12px; color: #a0e4a0; line-height: 1.7; white-space: pre; overflow-x: auto; }
+</style>

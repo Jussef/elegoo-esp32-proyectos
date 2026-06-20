@@ -1,0 +1,116 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Wire.h&gt;
+#include &lt;Adafruit_GFX.h&gt;
+#include &lt;Adafruit_SSD1306.h&gt;
+
+#define SCREEN_W  128
+#define SCREEN_H   64
+#define OLED_RESET -1
+
+Adafruit_SSD1306 oled(SCREEN_W, SCREEN_H, &amp;Wire, OLED_RESET);
+
+void setup() {
+  Serial.begin(115200);
+
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("OLED no encontrado. Revisa el cableado.");
+    while (true);
+  }
+
+  oled.clearDisplay();
+
+  // Linea 1: texto grande centrado
+  oled.setTextSize(2);
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(16, 10);
+  oled.print("Hola,");
+
+  // Linea 2: texto normal
+  oled.setTextSize(2);
+  oled.setCursor(22, 34);
+  oled.print("Mundo!");
+
+  oled.display();   // Mandar el buffer a la pantalla
+  Serial.println("OLED lista.");
+}
+
+void loop() {
+  // Nada que hacer: el texto se queda en pantalla
+}`;
+---
+<ProjectLayout title="Demo · Hola Mundo OLED — ESP32" label="DEMO" pageName="Hola Mundo — Prueba OLED">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">OLED · I2C</span>
+    </div>
+    <p class="desc">
+      Primer contacto con la pantalla OLED de 0.96" que usa el protocolo I2C.
+      Muestra "Hola, Mundo!" en dos líneas con texto de tamaño 2× y verifica que la
+      dirección I2C por defecto (<code>0x3C</code>) es correcta. Si ves el texto en pantalla,
+      el OLED está bien cableado y las librerías Adafruit están instaladas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OLED — SDA</td>
+          <td><span class="pin">GPIO 21</span></td>
+          <td>Bus I2C datos (pin por defecto en ESP-32)</td>
+        </tr>
+        <tr>
+          <td>OLED — SCL</td>
+          <td><span class="pin">GPIO 22</span></td>
+          <td>Bus I2C reloj (pin por defecto en ESP-32)</td>
+        </tr>
+        <tr>
+          <td>OLED — VCC</td>
+          <td><span class="pin">3.3V</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>OLED — GND</td>
+          <td><span class="pin">GND</span></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Dirección I2C:</strong> La mayoría de los módulos OLED SSD1306 usan <code>0x3C</code>.
+      Si la pantalla no aparece, prueba <code>0x3D</code> o usa un escáner I2C para detectar la dirección real.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">En Arduino IDE abre el <strong>Gestor de Librerías</strong> e instala <code>Adafruit SSD1306</code>. Esto instalará también <code>Adafruit GFX Library</code> como dependencia.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el OLED con 4 cables: <code>SDA→GPIO 21</code>, <code>SCL→GPIO 22</code>, <code>VCC→3.3V</code>, <code>GND→GND</code>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código. En el <strong>Monitor Serie</strong> a 115200 debe aparecer <em>"OLED lista."</em></div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">La pantalla mostrará <strong>"Hola, Mundo!"</strong>. Si la pantalla aparece en blanco pero el Serial dice "lista", prueba con la dirección <code>0x3D</code>.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> <code>oled.display()</code> es obligatorio: los comandos de dibujo solo modifican
+      el <em>buffer</em> en memoria RAM; sin esa llamada la pantalla no se actualiza.
+    </div>
+  </section>
+</ProjectLayout>

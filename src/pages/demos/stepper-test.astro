@@ -1,0 +1,94 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Stepper.h&gt;
+
+// 28BYJ-48: 2048 pasos por vuelta en modo paso completo
+const int STEPS_REV = 2048;
+
+// IN1, IN3, IN2, IN4 → secuencia correcta para el 28BYJ-48 con ULN2003
+Stepper motor(STEPS_REV, 19, 18, 5, 17);
+
+void setup() {
+  Serial.begin(115200);
+  motor.setSpeed(10);  // RPM (10 es estable, 15 es el limite practico)
+  Serial.println("Stepper listo.");
+}
+
+void loop() {
+  // Media vuelta en sentido horario
+  Serial.println("→ 1024 pasos (horario)");
+  motor.step(1024);
+  delay(500);
+
+  // Media vuelta en sentido antihorario
+  Serial.println("← 1024 pasos (antihorario)");
+  motor.step(-1024);
+  delay(500);
+}`;
+---
+<ProjectLayout title="Demo · Test Stepper — ESP32" label="DEMO" pageName="Test Stepper — Prueba de motor">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">ULN2003 · Stepper 28BYJ-48</span>
+    </div>
+    <p class="desc">
+      Prueba básica del motor paso a paso 28BYJ-48 con el driver ULN2003.
+      El motor hace media vuelta en sentido horario, pausa medio segundo, y luego media vuelta en sentido
+      antihorario, repitiendo indefinidamente. Sirve para verificar el cableado y la secuencia de bobinas
+      antes de usarlo en un proyecto real.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ULN2003 — IN1</td><td><span class="pin">GPIO 19</span></td><td>Bobina 1</td></tr>
+        <tr><td>ULN2003 — IN2</td><td><span class="pin">GPIO 18</span></td><td>Bobina 2</td></tr>
+        <tr><td>ULN2003 — IN3</td><td><span class="pin">GPIO 5</span></td><td>Bobina 3</td></tr>
+        <tr><td>ULN2003 — IN4</td><td><span class="pin">GPIO 17</span></td><td>Bobina 4</td></tr>
+        <tr><td>ULN2003 — VCC (+)</td><td><span class="pin">5V ext.</span></td><td>Usa la fuente externa, NO el 5V del ESP-32</td></tr>
+        <tr><td>ULN2003 — GND (−)</td><td><span class="pin">GND</span></td><td>GND común con ESP-32 y fuente</td></tr>
+        <tr><td>Motor 28BYJ-48</td><td>→ ULN2003</td><td>Cable blanco de 5 pines, entra en la placa driver</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Alimentación:</strong> El 28BYJ-48 puede causar reinicios si se alimenta desde el pin 5V del ESP-32.
+      Usa siempre una <strong>fuente de 5V externa</strong> para el driver ULN2003 y une los GND.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">La librería <code>Stepper.h</code> ya viene incluida con el IDE de Arduino, no necesitas instalar nada extra.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el motor a la placa ULN2003 con el cable de 5 pines. Cablea <code>IN1–IN4</code> a los GPIOs indicados y alimenta el driver con la <strong>fuente de 5V externa</strong>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código. El motor debe girar media vuelta en un sentido, pausar, y regresar.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Si el motor vibra pero no gira, revisa que el orden de pines sea <code>IN1, IN3, IN2, IN4</code> (no <code>IN1, IN2, IN3, IN4</code>) en el constructor <code>Stepper()</code>.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Después de cada movimiento, las bobinas quedan energizadas y el motor se calienta.
+      En proyectos reales, apaga las bobinas cuando no necesites torque:
+      <code>digitalWrite(19, LOW); digitalWrite(18, LOW); digitalWrite(5, LOW); digitalWrite(17, LOW);</code>
+      <br><br>
+      <strong>Velocidad máxima práctica:</strong> con <code>setSpeed(15)</code> el motor va razonablemente rápido;
+      valores más altos pueden hacer que pierda pasos.
+    </div>
+  </section>
+</ProjectLayout>

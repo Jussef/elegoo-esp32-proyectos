@@ -1,0 +1,163 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Wire.h&gt;
+#include &lt;math.h&gt;
+
+#define MPU_ADDR  0x68   // Direccion I2C del MPU-6050 (AD0 a GND)
+
+void mpuWrite(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(reg);
+  Wire.write(val);
+  Wire.endTransmission(true);
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  Wire.begin();          // SDA=GPIO21, SCL=GPIO22 en el ESP-32
+
+  // Comprobar que el sensor responde en el bus I2C
+  Wire.beginTransmission(MPU_ADDR);
+  if (Wire.endTransmission() != 0) {
+    Serial.println("ERROR: GY-6500 no responde. Revisa cables y la direccion 0x68/0x69.");
+    while (true) delay(1000);
+  }
+
+  mpuWrite(0x6B, 0x00);  // PWR_MGMT_1: despertar el sensor (sale del modo sleep)
+  Serial.println("GY-6500 (MPU-6050) detectado. Iniciando lecturas...\n");
+  delay(500);
+}
+
+void loop() {
+  uint8_t d[14];
+
+  // Leer de golpe 14 registros: Accel(6) + Temp(2) + Gyro(6)
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);                 // ACCEL_XOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU_ADDR, 14, true);
+  for (int i = 0; i &lt; 14; i++) d[i] = Wire.read();
+
+  // Acelerometro en g (rango +-2g -&gt; 16384 LSB/g)
+  float ax = (int16_t)(d[0]  &lt;&lt; 8 | d[1])  / 16384.0f;
+  float ay = (int16_t)(d[2]  &lt;&lt; 8 | d[3])  / 16384.0f;
+  float az = (int16_t)(d[4]  &lt;&lt; 8 | d[5])  / 16384.0f;
+
+  // Temperatura en grados C (formula de la hoja de datos)
+  float tempC = (int16_t)(d[6] &lt;&lt; 8 | d[7]) / 340.0f + 36.53f;
+
+  // Giroscopio en grados/segundo (rango +-250 -&gt; 131 LSB/(deg/s))
+  float gx = (int16_t)(d[8]  &lt;&lt; 8 | d[9])  / 131.0f;
+  float gy = (int16_t)(d[10] &lt;&lt; 8 | d[11]) / 131.0f;
+  float gz = (int16_t)(d[12] &lt;&lt; 8 | d[13]) / 131.0f;
+
+  // Angulos de inclinacion a partir de la gravedad
+  float pitch = atan2f(ax, sqrtf(ay*ay + az*az)) * 180.0f / M_PI;
+  float roll  = atan2f(ay, sqrtf(ax*ax + az*az)) * 180.0f / M_PI;
+
+  Serial.printf("Accel[g]  X:%+.2f  Y:%+.2f  Z:%+.2f\n", ax, ay, az);
+  Serial.printf("Gyro[d/s] X:%+.1f  Y:%+.1f  Z:%+.1f\n", gx, gy, gz);
+  Serial.printf("Pitch:%+.1f  Roll:%+.1f   Temp:%.1f C\n", pitch, roll, tempC);
+  Serial.println("----------------------------------------");
+
+  delay(500);
+}`;
+---
+<ProjectLayout title="Demo · Prueba GY-6500 (MPU-6050) — ESP32" label="DEMO" pageName="Prueba GY-6500 (MPU-6050)">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · I2C</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu módulo <strong>GY-6500 (MPU-6050)</strong>: lee el
+      <strong>acelerómetro</strong> (3 ejes), el <strong>giroscopio</strong> (3 ejes) y la
+      <strong>temperatura interna</strong>, y lo imprime todo en el Monitor Serie. Calcula además los
+      ángulos de <strong>inclinación (Pitch y Roll)</strong>. Sirve para confirmar que el sensor
+      <strong>está bien conectado por I2C</strong>, que responde en su dirección (<code>0x68</code>) y
+      que los valores cambian al mover el módulo. No necesita pantalla ni librerías externas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GY-6500 — VCC</td><td><span class="pin">3.3V</span></td><td>El módulo lleva regulador, pero 3.3V es lo más seguro</td></tr>
+        <tr><td>GY-6500 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>GY-6500 — SDA</td><td><span class="pin">GPIO 21</span></td><td>Bus I2C (datos)</td></tr>
+        <tr><td>GY-6500 — SCL</td><td><span class="pin">GPIO 22</span></td><td>Bus I2C (reloj)</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Solo 4 cables.</strong> Los pines <code>AD0</code>, <code>INT</code>, <code>XDA</code>,
+      <code>XCL</code> del módulo se dejan sin conectar para esta prueba. Con <code>AD0</code> a GND
+      (lo normal) la dirección I2C es <code>0x68</code>; si lo conectaras a 3.3V sería <code>0x69</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">GY-6500 (MPU-6050) detectado. Iniciando lecturas...
+
+Accel[g]  X:+0.01  Y:-0.02  Z:+1.00
+Gyro[d/s] X:+0.3  Y:-0.1  Z:+0.2
+Pitch:+0.6  Roll:-1.1   Temp:27.4 C
+----------------------------------------
+Accel[g]  X:+0.71  Y:-0.03  Z:+0.70
+Gyro[d/s] X:+1.2  Y:+8.4  Z:-0.5
+Pitch:+45.2  Roll:-1.4   Temp:27.5 C
+----------------------------------------</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>En reposo y plano</strong> verás <code>Z ≈ +1.00 g</code> (la gravedad) y los demás cerca de 0.
+      Al inclinar el módulo, <code>Pitch</code> y <code>Roll</code> cambian; al girarlo rápido, el
+      <code>Gyro</code> se dispara y vuelve a 0 al detenerlo. Si todo eso pasa, ¡tu sensor funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el GY-6500: <code>VCC→3.3V</code>, <code>GND→GND</code>, <code>SDA→21</code> y <code>SCL→22</code>. Solo 4 cables.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text"><strong>No hace falta instalar ninguna librería</strong>: el código lee el sensor directamente por I2C con <code>Wire.h</code> (ya viene con el core del ESP-32).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Mueve e inclina el módulo con la mano: los valores de <code>Accel</code>, <code>Gyro</code>, <code>Pitch</code> y <code>Roll</code> deben reaccionar al instante.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Sale "GY-6500 no responde"?</strong> Revisa que SDA y SCL no estén intercambiados,
+      que la alimentación sea <code>3.3V</code> y que el módulo esté bien sentado en el protoboard.
+      Si tu placa tiene <code>AD0</code> conectado a 3.3V, cambia <code>0x68</code> por <code>0x69</code>.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>

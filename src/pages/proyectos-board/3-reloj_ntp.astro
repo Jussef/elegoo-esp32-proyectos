@@ -1,0 +1,140 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;WiFi.h&gt;
+#include &lt;time.h&gt;
+
+const char* SSID     = "TU_WIFI";    // Nombre de tu red WiFi
+const char* PASSWORD = "TU_CLAVE";   // Contrasena de tu red WiFi
+
+// Ajusta el offset GMT segun tu pais (ver tabla en la pagina)
+// Colombia / Peru / Ecuador = -5 * 3600
+const long  GMT_OFFSET_SEC      = -5 * 3600;
+const int   DAYLIGHT_OFFSET_SEC = 0;       // 3600 si tu pais usa horario de verano
+const char* NTP_SERVER          = "pool.ntp.org";
+
+const char* DIAS[]  = { "Dom","Lun","Mar","Mie","Jue","Vie","Sab" };
+const char* MESES[] = { "Ene","Feb","Mar","Abr","May","Jun",
+                         "Jul","Ago","Sep","Oct","Nov","Dic" };
+
+void printTime() {
+  struct tm t;
+  if (!getLocalTime(&t)) {
+    Serial.println("Error: no se pudo obtener la hora");
+    return;
+  }
+  Serial.printf("%s %02d %s %04d  -  %02d:%02d:%02d\n",
+    DIAS[t.tm_wday],
+    t.tm_mday,
+    MESES[t.tm_mon],
+    t.tm_year + 1900,
+    t.tm_hour,
+    t.tm_min,
+    t.tm_sec
+  );
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(SSID, PASSWORD);
+  Serial.print("Conectando a WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConectado! Sincronizando hora NTP...");
+
+  configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+
+  // Espera la primera sincronizacion (max 10 intentos)
+  struct tm t;
+  int tries = 0;
+  while (!getLocalTime(&t) &amp;&amp; tries++ &lt; 10) {
+    Serial.print(".");
+    delay(1000);
+  }
+
+  if (getLocalTime(&t)) {
+    Serial.println("\nHora sincronizada!\n");
+  } else {
+    Serial.println("\nTimeout NTP - verifica la conexion.\n");
+  }
+}
+
+void loop() {
+  printTime();
+  delay(1000);
+}`;
+---
+<ProjectLayout title="03 · Reloj NTP por Internet — ESP32" label="PROYECTO 03" pageName="Reloj NTP por Internet">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge facil">Principiante</span>
+      <span class="cat-tag">WiFi · Internet</span>
+    </div>
+    <p class="desc">
+      El ESP-32 se conecta a internet y sincroniza la hora exacta con servidores NTP
+      (<em>Network Time Protocol</em>). No necesita ningún módulo de reloj (RTC) — el tiempo
+      se obtiene automáticamente y se muestra cada segundo en el Monitor Serie con fecha y hora completas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Cable USB A → C</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Conexión a internet (WiFi)</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <p class="no-wiring">Sin conexiones externas — solo el ESP-32 conectado por USB. La salida se ve en el Monitor Serie.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Zona horaria — ajusta según tu país</div>
+    <div class="tz-grid">
+      <div class="tz-item"><div class="tz-country">México Centro</div><div class="tz-val">-6 * 3600</div></div>
+      <div class="tz-item"><div class="tz-country">Colombia / Perú / Ecuador</div><div class="tz-val">-5 * 3600</div></div>
+      <div class="tz-item"><div class="tz-country">Venezuela</div><div class="tz-val">-4 * 3600</div></div>
+      <div class="tz-item"><div class="tz-country">Argentina / Chile</div><div class="tz-val">-3 * 3600</div></div>
+      <div class="tz-item"><div class="tz-country">España (invierno)</div><div class="tz-val">+1 * 3600</div></div>
+      <div class="tz-item"><div class="tz-country">España (verano DST)</div><div class="tz-val">DST = 3600</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Cambia <code>TU_WIFI</code> y <code>TU_CLAVE</code> con tu red y contraseña WiFi.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Ajusta <code>GMT_OFFSET_SEC</code> según tu país usando la tabla de arriba (ej: Colombia = <code>-5 * 3600</code>).</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el Monitor Serie a 115200 baud. Espera unos segundos a que se sincronice.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Verás la hora actualizada cada segundo: <code>Lun 16 May 2026  -  14:32:07</code></div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Puedes usar este proyecto como base para un reloj OLED — combínalo con el proyecto
+      de la pantalla OLED para mostrar la hora en hardware en lugar del Monitor Serie.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.tz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.tz-item { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+.tz-country { color: rgba(255,255,255,0.8); font-weight: 500; margin-bottom: 3px; }
+.tz-val { font-family: 'Courier New', monospace; font-size: 12px; color: #22d3ee; }
+</style>

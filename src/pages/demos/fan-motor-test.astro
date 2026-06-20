@@ -1,0 +1,138 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define PIN_MOTOR  25   // GPIO 25 -&gt; (resistencia 1k) -&gt; base del PN2222
+
+// PWM por hardware del ESP-32 (LEDC)
+const int CANAL    = 0;      // canal LEDC 0..15
+const int FREC     = 1000;   // 1 kHz, suave para un motor pequeno
+const int RES_BITS = 8;      // resolucion 8 bits -&gt; valores 0..255
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  ledcSetup(CANAL, FREC, RES_BITS);   // configurar el canal PWM
+  ledcAttachPin(PIN_MOTOR, CANAL);    // enlazar el GPIO a ese canal
+  Serial.println("Motor listo. Probando velocidades...\n");
+}
+
+void setVelocidad(int pct) {          // pct: 0..100 %
+  int duty = map(pct, 0, 100, 0, 255);
+  ledcWrite(CANAL, duty);
+  Serial.printf("Velocidad: %3d %%  (duty %d/255)\n", pct, duty);
+}
+
+void loop() {
+  // Subir de 0 a 100 % poco a poco
+  for (int v = 0; v &lt;= 100; v += 25) {
+    setVelocidad(v);
+    delay(1500);
+  }
+  // Bajar de 100 a 0 %
+  for (int v = 75; v &gt;= 0; v -= 25) {
+    setVelocidad(v);
+    delay(1500);
+  }
+  Serial.println("--- ciclo completo ---");
+  delay(1000);
+}`;
+---
+<ProjectLayout title="Demo · Prueba Fan + Motor 3-6V — ESP32" label="DEMO" pageName="Prueba Fan + Motor 3-6V">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Motor · PWM</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu <strong>motor/ventilador de 3-6V</strong>: lo enciende y lo apaga, y
+      luego varía su <strong>velocidad</strong> usando <strong>PWM</strong>. Como un GPIO del ESP-32 no puede
+      mover un motor directamente (le falta corriente), lo controlamos con un <strong>transistor PN2222</strong>
+      que hace de interruptor, más un <strong>diodo de protección</strong>. El Monitor Serie te va diciendo a
+      qué velocidad está girando en cada momento.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Conexión</th><th>Va a</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ESP-32 — GPIO 25</td><td><span class="pin">Base PN2222</span></td><td>A través de una resistencia de <strong>1 kΩ</strong></td></tr>
+        <tr><td>Emisor PN2222</td><td><span class="pin">GND</span></td><td>GND común con el ESP-32</td></tr>
+        <tr><td>Colector PN2222</td><td><span class="pin">Motor (−)</span></td><td>El transistor abre/cierra el negativo del motor</td></tr>
+        <tr><td>Motor (+)</td><td><span class="pin">5V (VIN)</span></td><td>Alimenta el motor desde 5V</td></tr>
+        <tr><td>Diodo 1N4007</td><td><span class="pin">en paralelo</span></td><td>Sobre el motor, banda hacia el <strong>+</strong> (protección)</td></tr>
+      </tbody>
+    </table>
+    <div class="note danger" style="margin-top:12px;">
+      <strong>Nunca conectes el motor directo a un GPIO.</strong> El motor pide más corriente de la que da el
+      pin y lo dañaría. El <strong>transistor</strong> hace de interruptor y el <strong>diodo de retorno</strong>
+      (1N4007 en paralelo con el motor, banda hacia el +) absorbe el pico de tensión que genera la bobina al
+      apagarse. Sin el diodo, ese pico puede dañar el transistor o el ESP-32.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">Motor listo. Probando velocidades...
+
+Velocidad:   0 %  (duty 0/255)
+Velocidad:  25 %  (duty 63/255)
+Velocidad:  50 %  (duty 127/255)
+Velocidad:  75 %  (duty 191/255)
+Velocidad: 100 %  (duty 255/255)
+Velocidad:  75 %  (duty 191/255)
+--- ciclo completo ---</div>
+    <div class="note" style="margin-top:14px;">
+      El motor debe <strong>arrancar suave e ir acelerando</strong> hasta el máximo y luego frenar. Es normal
+      que a <code>25 %</code> el motor pequeño aún no arranque (necesita un mínimo de empuje); empezará a girar
+      a partir de cierto punto. Si gira y cambia de velocidad con cada paso, ¡funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Monta el transistor: <code>GPIO 25 → resistencia 1kΩ → base</code>, <code>emisor → GND</code>, <code>colector → motor(−)</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta <code>motor(+) → 5V</code> y coloca el <strong>diodo 1N4007 en paralelo</strong> con el motor, con la banda hacia el <code>+</code>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text"><strong>No hace falta instalar ninguna librería</strong>: el PWM usa <code>ledc</code>, que ya viene con el core del ESP-32.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Sube el código, abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios y observa cómo el motor sube y baja de velocidad.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿El motor no gira?</strong> Revisa que el <code>emisor</code> vaya a GND (no el colector), que la
+      <code>base</code> tenga la resistencia de 1 kΩ y que el motor reciba 5V. <strong>¿Gira siempre al
+      máximo o nunca?</strong> Comprueba que el GPIO de la base sea el 25 y que el GND del ESP-32 y el de la
+      alimentación del motor estén unidos.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+.note.danger { background: rgba(239,68,68,0.07); border-color: rgba(239,68,68,0.22); }
+.note.danger strong { color: rgba(248,113,113,0.9); }
+</style>

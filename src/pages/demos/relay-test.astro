@@ -1,0 +1,101 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define RELE 23   // pin de senal (IN) del modulo rele
+
+void setup() {
+  pinMode(RELE, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("Test rele: deberias oir un clic cada segundo.");
+}
+
+void loop() {
+  digitalWrite(RELE, HIGH);   // cambia de estado el rele (clic)
+  Serial.println("Rele -> estado A (clic)");
+  delay(1000);
+
+  digitalWrite(RELE, LOW);    // vuelve al estado anterior (clic)
+  Serial.println("Rele -> estado B (clic)");
+  delay(1000);
+}`;
+---
+<ProjectLayout title="Demo · Test Relé 5V — ESP32" label="DEMO" pageName="Test Relé 5V — Prueba de clic">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">5V Relay · Salida digital</span>
+    </div>
+    <p class="desc">
+      La prueba más simple del relé: lo <strong>activa y desactiva una vez por segundo</strong>. Vas a
+      <strong>oír el "clic"</strong> mecánico del relé y ver su <strong>LED encenderse y apagarse</strong>.
+      Eso confirma que el módulo recibe la señal del ESP-32 y funciona, <strong>sin necesidad de conectar
+      ningún aparato</strong>. Una vez que clickea bien, ya puedes usarlo para controlar una lámpara,
+      una bomba, un ventilador, etc.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Relé — IN (señal)</td><td><span class="pin">GPIO 23</span></td><td>Pin de control</td></tr>
+        <tr><td>Relé — VCC</td><td><span class="pin">5V</span></td><td>La bobina del relé necesita 5V, no 3.3V</td></tr>
+        <tr><td>Relé — GND</td><td><span class="pin">GND</span></td><td>GND común con el ESP-32</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Lado de potencia (los 3 tornillos):</strong> son <code>COM</code>, <code>NO</code>
+      (normalmente abierto) y <code>NC</code> (normalmente cerrado). En este demo <strong>NO conectes nada
+      ahí</strong>: solo queremos oír el clic. Esos bornes son para más adelante, cuando controles un aparato.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta solo 3 cables: <code>IN→GPIO 23</code>, <code>VCC→5V</code> y <code>GND→GND</code>. No conectes nada en los tornillos de potencia.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Sube el código. Deberías oír un <strong>"clic-clic"</strong> cada segundo y ver el <strong>LED del relé</strong> parpadear al ritmo.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Abre el <strong>Monitor Serie</strong> a 115200 para ver el cambio de estado A/B en cada clic.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">¡Si clickea, tu relé funciona! Ya está listo para los proyectos de control (enchufe inteligente, riego, alarma...).</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Active-LOW?</strong> Muchos de estos módulos se activan con <code>LOW</code> en vez de
+      <code>HIGH</code> (el LED enciende al revés de lo que esperas). No afecta a esta prueba —igual hace
+      clic—, pero recuérdalo en tus proyectos: si la lógica te sale invertida, cambia <code>HIGH</code> por
+      <code>LOW</code>.
+    </div>
+    <div class="danger">
+      <strong>⚠️ Seguridad:</strong> este demo solo prueba el clic. <strong>No conectes 110V/220V de la
+      pared</strong> a menos que sepas lo que haces: ese voltaje es peligroso. Para practicar el lado de
+      potencia, usa primero algo de baja tensión (un LED con su pila, una tira LED de 12V, etc.).
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.danger {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.55);
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+.danger strong { color: #fca5a5; }
+</style>

@@ -1,0 +1,206 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const codeEmisor = String.raw`#include &lt;IRremote.hpp&gt;   // libreria "IRremote" v4.x
+
+#define PIN_SEND 23        // pin de senal (S) del EMISOR
+
+void setup() {
+  Serial.begin(115200);
+  IrSender.begin(PIN_SEND);
+  Serial.println("Emisor IR listo: enviando un codigo cada segundo.");
+}
+
+void loop() {
+  // Envia un codigo NEC conocido (direccion 0x00, comando 0x45)
+  IrSender.sendNEC(0x00, 0x45, 0);
+  Serial.println("Enviado 0x45");
+  delay(1000);
+}`;
+const codeReceptor = String.raw`#include &lt;IRremote.hpp&gt;   // libreria "IRremote" v4.x
+
+#define PIN_RECV 4         // pin de senal (Y) del RECEPTOR
+
+void setup() {
+  Serial.begin(115200);
+  IrReceiver.begin(PIN_RECV, ENABLE_LED_FEEDBACK);
+  Serial.println("Receptor listo. Apunta el control y presiona botones.");
+}
+
+void loop() {
+  // Cuando llega una senal IR completa, la decodifica
+  if (IrReceiver.decode()) {
+    // Codigo del boton presionado (en hexadecimal)
+    Serial.print("Boton -> 0x");
+    Serial.println(IrReceiver.decodedIRData.command, HEX);
+
+    // Resumen completo (protocolo, direccion, datos crudos)
+    IrReceiver.printIRResultShort(&amp;Serial);
+
+    IrReceiver.resume();   // listo para el siguiente boton
+  }
+}`;
+---
+<ProjectLayout title="Demo · Test IR — ESP32" label="DEMO" pageName="Test IR — Emisor + Receptor">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">IR Emitter + Receiver</span>
+    </div>
+    <p class="desc">
+      Tienes <strong>dos módulos separados</strong>. Usa las pestañas de abajo para probar cada uno:
+      el <strong>Emisor</strong> es el que parece un LED (pines <code>S</code> / medio / <code>−</code>) y
+      lo verificarás con la cámara del celular; el <strong>Receptor</strong> es el del vidrio negro (pines
+      <code>G</code> / <code>R</code> / <code>Y</code>) y lo probarás leyendo los botones de tu
+      <strong>control remoto</strong>.
+    </p>
+    <div class="note">
+      Ambas pruebas usan la librería <strong>"IRremote"</strong> de Armin Joachimsmeyer (v4.x). Instálala
+      una vez desde el Gestor de Librerías; por eso el include es <code>IRremote.hpp</code> (con <code>.hpp</code>).
+    </div>
+  </section>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-emisor">📡 Emisor</button>
+    <button class="tab-btn" data-tab="tab-receptor">📥 Receptor + Control</button>
+  </div>
+
+  <!-- TAB EMISOR -->
+  <div class="tab-panel active" id="tab-emisor">
+    <section class="section">
+      <div class="section-label">Conexiones · Emisor (el que parece un LED)</div>
+      <table>
+        <thead>
+          <tr><th>Pin del módulo</th><th>Pin ESP-32</th><th>Notas</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>S</strong> (señal)</td><td><span class="pin">GPIO 23</span></td><td>Pin de datos</td></tr>
+          <tr><td>Medio</td><td><span class="pin">— sin conectar</span></td><td>Este módulo no usa el pin del centro</td></tr>
+          <tr><td><strong>−</strong> (GND)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:12px;">
+        Solo necesita 2 cables: <code>S</code> y <code>−</code>. El pin del medio se deja libre.
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Código · Emisor</div>
+      <div class="code-box">
+        <div class="code-header">
+          <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+          <button class="copy-btn">Copiar</button>
+        </div>
+        <pre><code class="language-cpp" set:html={codeEmisor}></code></pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Cómo probar el emisor</div>
+      <div class="steps">
+        <div class="step"><div class="step-n">1</div><div class="step-text">Conecta <code>S→GPIO 23</code> y <code>−→GND</code>. El pin del medio queda libre.</div></div>
+        <div class="step"><div class="step-n">2</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a 115200: verás <code>Enviado 0x45</code> repetido.</div></div>
+        <div class="step"><div class="step-n">3</div><div class="step-text">La luz IR es <strong>invisible al ojo</strong>. Apunta la <strong>cámara del celular</strong> al LED del emisor: verás un <strong>destello morado</strong> parpadeando cada segundo. ¡Eso confirma que emite!</div></div>
+      </div>
+      <div class="note">
+        <strong>Prueba real (opcional):</strong> apunta el emisor al <strong>receptor</strong> de la otra
+        pestaña (a 2-5 cm) y corre allí el código de recepción: deberías ver llegar el <code>0x45</code>.
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB RECEPTOR -->
+  <div class="tab-panel" id="tab-receptor">
+    <section class="section">
+      <div class="section-label">Conexiones · Receptor (el del vidrio negro)</div>
+      <table>
+        <thead>
+          <tr><th>Pin del módulo</th><th>Pin ESP-32</th><th>Notas</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Y</strong> (señal / Yellow)</td><td><span class="pin">GPIO 4</span></td><td>Pin de datos</td></tr>
+          <tr><td><strong>R</strong> (VCC / Red)</td><td><span class="pin">3.3V</span></td><td>Alimentación (funciona a 3.3V o 5V)</td></tr>
+          <tr><td><strong>G</strong> (GND)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:12px;">
+        <strong>Ojo con el mapeo G/R/Y:</strong> la convención normal es <code>G</code>=GND,
+        <code>R</code>=VCC(+) y <code>Y</code>=señal. Si tu placa no responde, no se daña: prueba a
+        intercambiar y verifica las letras impresas junto a cada pin.
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Código · Receptor (lee el control remoto)</div>
+      <div class="code-box">
+        <div class="code-header">
+          <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+          <button class="copy-btn">Copiar</button>
+        </div>
+        <pre><code class="language-cpp" set:html={codeReceptor}></code></pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Cómo probar el receptor</div>
+      <div class="steps">
+        <div class="step"><div class="step-n">1</div><div class="step-text">Conecta <code>Y→GPIO 4</code>, <code>R→3.3V</code> y <code>G→GND</code>.</div></div>
+        <div class="step"><div class="step-n">2</div><div class="step-text">Quítale la lengüeta de plástico a la pila del <strong>control remoto</strong> si es nuevo.</div></div>
+        <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a 115200 baudios.</div></div>
+        <div class="step"><div class="step-n">4</div><div class="step-text">Apunta el control al receptor y presiona botones: verás el código de cada tecla, p. ej. <code>Boton -> 0x45</code>. <strong>Anótalos</strong>, los necesitarás en tus proyectos.</div></div>
+      </div>
+      <div class="note">
+        <strong>¿Sale <code>0x0</code> o "Unknown"?</strong> Suele pasar al mantener un botón (envía
+        códigos de repetición) o al apuntar de lado. Da toques cortos y de frente al sensor.
+      </div>
+    </section>
+  </div>
+</ProjectLayout>
+
+<style is:global>
+.tabs { display: flex; gap: 8px; }
+.tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.25); }
+.tab-btn.active { background: #22d3ee; border-color: #22d3ee; color: #0f0f13; }
+.tab-panel { display: none; flex-direction: column; gap: 18px; }
+.tab-panel.active { display: flex; }
+</style>
+
+<script is:inline>
+// Resaltado de sintaxis en todos los bloques de codigo
+document.querySelectorAll('pre code').forEach(function (el) {
+  if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+});
+
+// Boton Copiar (funciona para todos los bloques)
+document.querySelectorAll('.copy-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var code = this.closest('.code-box').querySelector('code');
+    navigator.clipboard.writeText(code.textContent).then(() => {
+      this.textContent = '✓ Copiado';
+      setTimeout(() => { this.textContent = 'Copiar'; }, 2000);
+    });
+  });
+});
+
+// Cambio de pestañas
+document.querySelectorAll('.tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById(this.dataset.tab).classList.add('active');
+  });
+});
+</script>

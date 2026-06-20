@@ -1,0 +1,154 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;WiFi.h&gt;
+#include &lt;ArduinoOTA.h&gt;
+
+const char* SSID         = "TU_WIFI";     // Nombre de tu red WiFi
+const char* PASSWORD     = "TU_CLAVE";    // Contrasena de tu red WiFi
+const char* OTA_HOSTNAME = "esp32-ota";   // Nombre en la lista de puertos de Arduino IDE
+const char* OTA_PASSWORD = "1234";        // Contrasena para autorizar la actualizacion
+
+const int LED_PIN = 2;   // LED integrado del ESP-32
+
+void setupOTA() {
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+
+  ArduinoOTA.onStart([]() {
+    String tipo = (ArduinoOTA.getCommand() == U_FLASH) ? "firmware" : "filesystem";
+    Serial.println("\nIniciando OTA (" + tipo + ")...");
+    digitalWrite(LED_PIN, LOW);   // Apaga LED durante la actualizacion
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nActualizacion completada! Reiniciando...");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    int pct = progress / (total / 100);
+    Serial.printf("\rProgreso: %3d%%  [", pct);
+    for (int i = 0; i &lt; 20; i++) Serial.print(i &lt; pct / 5 ? '#' : '.');
+    Serial.print("]");
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.println("\nError OTA:");
+    if      (error == OTA_AUTH_ERROR)    Serial.println("  Contrasena incorrecta");
+    else if (error == OTA_BEGIN_ERROR)   Serial.println("  Error al iniciar");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("  Error de conexion");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("  Error al recibir");
+    else if (error == OTA_END_ERROR)     Serial.println("  Error al finalizar");
+  });
+
+  ArduinoOTA.begin();
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+
+  WiFi.begin(SSID, PASSWORD);
+  Serial.print("Conectando a WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConectado!");
+
+  setupOTA();
+
+  Serial.println("=== OTA listo ===");
+  Serial.print("IP:       "); Serial.println(WiFi.localIP());
+  Serial.print("Hostname: "); Serial.println(OTA_HOSTNAME);
+  Serial.println("En Arduino IDE -> Herramientas -> Puerto");
+  Serial.println("Selecciona: " + String(OTA_HOSTNAME) + " (network)");
+  Serial.println("=================");
+}
+
+void loop() {
+  ArduinoOTA.handle();   // SIEMPRE al inicio del loop para recibir updates
+
+  // Parpadeo del LED — indica que el sistema esta activo
+  static unsigned long ultimo = 0;
+  static bool estado = false;
+  if (millis() - ultimo &gt; 1000) {
+    ultimo = millis();
+    estado = !estado;
+    digitalWrite(LED_PIN, estado);
+  }
+}`;
+---
+<ProjectLayout title="06 · Actualizaciones OTA — ESP32" label="PROYECTO 06" pageName="Actualizaciones OTA por WiFi">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge medio">Intermedio</span>
+      <span class="cat-tag">WiFi · OTA · DevOps</span>
+    </div>
+    <p class="desc">
+      OTA (<em>Over-The-Air</em>) permite actualizar el firmware del ESP-32 por WiFi desde el Arduino IDE,
+      sin necesidad de conectar el cable USB cada vez. Ideal cuando el ESP-32 está montado en un lugar
+      difícil de alcanzar. El LED integrado parpadea para indicar que el sistema está activo y listo
+      para recibir actualizaciones.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Cable USB A → C (solo para la primera carga)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Red WiFi con acceso a internet</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <p class="no-wiring">Sin conexiones externas — el LED integrado en GPIO 2 parpadea para confirmar que el sistema está activo.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Flujo de trabajo OTA</div>
+    <div class="flow">
+      <div class="flow-item"><div class="flow-num">Primera vez</div><div class="flow-text">Sube el código por USB con el cable</div></div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-item"><div class="flow-num">El ESP-32 se conecta</div><div class="flow-text">Al WiFi y anuncia su presencia en la red</div></div>
+      <div class="flow-arrow">›</div>
+      <div class="flow-item"><div class="flow-num">Futuras updates</div><div class="flow-text">Arduino IDE → Puerto (red) → Subir sin USB</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Cambia <code>TU_WIFI</code> y <code>TU_CLAVE</code> con tu red WiFi. Puedes también cambiar <code>OTA_PASSWORD</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Sube el código por USB la primera vez. El Monitor Serie mostrará la IP y el nombre de red del ESP-32.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Para subir código por WiFi: en Arduino IDE ve a <strong>Herramientas → Puerto</strong> y selecciona <code>esp32-ota (network)</code> en lugar del puerto COM.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Presiona <strong>Subir</strong> normalmente. Se te pedirá la contraseña OTA (la que pusiste en <code>OTA_PASSWORD</code>).</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-text">El LED se apagará durante la actualización y el Monitor Serie mostrará la barra de progreso. Al terminar, el ESP-32 se reinicia.</div></div>
+    </div>
+    <div class="note">
+      <strong>Importante:</strong> Tu computadora y el ESP-32 deben estar en la misma red WiFi para que OTA funcione.
+      Asegúrate también de dejar <code>ArduinoOTA.handle()</code> al inicio de cada <code>loop()</code> en tus proyectos futuros.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.flow { display: flex; gap: 0; align-items: stretch; flex-wrap: wrap; }
+.flow-item { flex: 1; min-width: 120px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px 16px; text-align: center; }
+.flow-num { font-size: 10px; font-weight: 700; color: rgba(34,211,238,0.5); letter-spacing: 0.1em; margin-bottom: 6px; text-transform: uppercase; }
+.flow-text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4; }
+.flow-arrow { display: flex; align-items: center; padding: 0 6px; color: rgba(255,255,255,0.15); font-size: 20px; }
+</style>

@@ -1,0 +1,162 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+
+const char* SSID     = "TU_WIFI";     // Nombre de tu red WiFi
+const char* PASSWORD = "TU_CLAVE";    // Contrasena de tu red WiFi
+const int   LED_PIN  = 2;             // LED integrado del ESP-32
+
+WebServer server(80);
+bool ledOn = false;
+
+// Pagina web de control
+const char PAGE[] = R"rawliteral(
+&lt;!DOCTYPE html&gt;&lt;html lang="es"&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
+&lt;title&gt;Control LED&lt;/title&gt;
+&lt;style&gt;
+  body { font-family:sans-serif; background:#111; color:#fff; display:flex;
+         align-items:center; justify-content:center; min-height:100vh; margin:0; }
+  .card { background:#1a1a2e; border-radius:20px; padding:36px;
+          max-width:300px; width:90%; text-align:center; }
+  h2 { color:#22d3ee; margin-bottom:6px; }
+  .lbl { font-size:13px; color:rgba(255,255,255,.4); margin-bottom:22px; }
+  button { padding:13px 28px; border:none; border-radius:10px;
+           font-size:15px; font-weight:700; cursor:pointer; width:100%; }
+  .on  { background:#22d3ee; color:#111; }
+  .off { background:rgba(255,255,255,.1); color:#fff; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class="card"&gt;
+  &lt;h2&gt;Control LED&lt;/h2&gt;
+  &lt;div class="lbl" id="lbl"&gt;Cargando...&lt;/div&gt;
+  &lt;button id="btn" onclick="toggle()"&gt;...&lt;/button&gt;
+&lt;/div&gt;
+&lt;script&gt;
+async function update() {
+  const d = await fetch('/estado').then(r =&gt; r.json());
+  document.getElementById('lbl').textContent = 'LED: '+(d.on?'ENCENDIDO':'APAGADO');
+  const b = document.getElementById('btn');
+  b.className = d.on ? 'on' : 'off';
+  b.textContent = d.on ? 'Apagar' : 'Encender';
+}
+async function toggle() { await fetch('/toggle'); update(); }
+update();
+&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;
+)rawliteral";
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+
+  WiFi.begin(SSID, PASSWORD);
+  Serial.print("Conectando a WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConectado!");
+  Serial.print("Abre en tu navegador: http://");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", []() {
+    server.send(200, "text/html; charset=utf-8", PAGE);
+  });
+  server.on("/toggle", []() {
+    ledOn = !ledOn;
+    digitalWrite(LED_PIN, ledOn);
+    server.send(200, "text/plain", "ok");
+  });
+  server.on("/estado", []() {
+    server.send(200, "application/json",
+      ledOn ? "{\"on\":true}" : "{\"on\":false}");
+  });
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}`;
+---
+<ProjectLayout title="02 · Servidor Web con WiFi — ESP32" label="PROYECTO 02" pageName="Servidor Web con WiFi">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge facil">Principiante</span>
+      <span class="cat-tag">WiFi · IoT</span>
+    </div>
+    <p class="desc">
+      El ESP-32 se conecta a tu red WiFi y levanta un servidor web en su IP local. Desde cualquier
+      navegador en la misma red puedes encender y apagar el LED integrado en tiempo real.
+      La página se actualiza automáticamente sin recargar.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">LED (cualquier color)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Resistor 330 Ω</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Protoboard + cables</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>LED — ánodo (+)</td>
+          <td><span class="pin">GPIO 2</span></td>
+          <td>En serie con la resistencia de 330 Ω</td>
+        </tr>
+        <tr>
+          <td>Resistor 330 Ω</td>
+          <td><span class="pin">GND</span></td>
+          <td>Entre el cátodo del LED y GND</td>
+        </tr>
+        <tr>
+          <td>LED — cátodo (−)</td>
+          <td><span class="pin">GND</span> (vía resistor)</td>
+          <td>La pata más corta del LED</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Alternativa:</strong> El ESP-32 tiene un LED integrado en GPIO 2. Si no quieres armar el circuito en el protoboard, simplemente observa el LED de la placa.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Reemplaza <code>TU_WIFI</code> y <code>TU_CLAVE</code> con el nombre y contraseña de tu red WiFi.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Sube el código. Abre el Monitor Serie (115200 baud) y espera a que aparezca la dirección IP del ESP-32.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">En cualquier dispositivo conectado a la misma red WiFi, abre un navegador y escribe esa IP (ej: <code>http://192.168.1.45</code>).</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Presiona el botón en la página web para encender y apagar el LED del ESP-32 en tiempo real.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Puedes agregar más rutas con <code>server.on("/ruta", handler)</code> para controlar varios pines o mostrar datos de sensores.
+    </div>
+  </section>
+</ProjectLayout>

@@ -1,0 +1,239 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`// ── Pines 7 segmentos ─────────────────────────────────────────
+const int segPins[7] = {23, 25, 26, 19, 18, 5, 17};  // a,b,c,d,e,f,g
+const int DP_PIN = 16;  // Punto decimal
+
+byte numbers[10][7] = {
+  {1,1,1,1,1,1,0}, // 0
+  {0,1,1,0,0,0,0}, // 1
+  {1,1,0,1,1,0,1}, // 2
+  {1,1,1,1,0,0,1}, // 3
+  {0,1,1,0,0,1,1}, // 4
+  {1,0,1,1,0,1,1}, // 5
+  {1,0,1,1,1,1,1}, // 6
+  {1,1,1,0,0,0,0}, // 7
+  {1,1,1,1,1,1,1}, // 8
+  {1,1,1,1,0,1,1}  // 9
+};
+
+void showNumber(int num) {
+  for (int i = 0; i &lt; 7; i++) {
+    digitalWrite(segPins[i], numbers[num][i]);
+  }
+}
+
+// ── OLED + DHT11 ──────────────────────────────────────────────
+#include &lt;Wire.h&gt;
+#include &lt;Adafruit_GFX.h&gt;
+#include &lt;Adafruit_SSD1306.h&gt;
+#include &lt;DHT.h&gt;
+#include &lt;WiFi.h&gt;
+#include &lt;time.h&gt;
+
+#define SCREEN_W    128
+#define SCREEN_H     64
+#define OLED_RESET   -1
+#define DHT_PIN       4
+
+const char* SSID     = "Tu_Red_WiFi";
+const char* PASSWORD = "Tu_Contrasena";
+const long  UTC_OFFSET = -21600;  // UTC-6 (Mexico Centro). UTC-5 = -18000
+
+const char* DIAS[] = { "Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab" };
+
+Adafruit_SSD1306 oled(SCREEN_W, SCREEN_H, &amp;Wire, OLED_RESET);
+DHT dht(DHT_PIN, DHT11);
+
+// ── Setup ──────────────────────────────────────────────────────
+void setup() {
+  Serial.begin(115200);
+
+  // 1) Inicializar pines del 7 segmentos
+  for (int i = 0; i &lt; 7; i++) {
+    pinMode(segPins[i], OUTPUT);
+    digitalWrite(segPins[i], LOW);
+  }
+  pinMode(DP_PIN, OUTPUT);
+  digitalWrite(DP_PIN, LOW);
+
+  // 2) Contar del 0 al 9 en el display
+  for (int i = 0; i &lt;= 9; i++) {
+    showNumber(i);
+    delay(1000);
+  }
+
+  // 3) Parpadear el punto 4 veces (quedar apagado al final)
+  showNumber(9);  // mantener el 9 mientras parpadea el punto
+  for (int i = 0; i &lt; 4; i++) {
+    digitalWrite(DP_PIN, HIGH);  // punto ON
+    delay(300);
+    digitalWrite(DP_PIN, LOW);   // punto OFF
+    delay(300);
+  }
+
+  // 4) Apagar todo el 7 segmentos
+  for (int i = 0; i &lt; 7; i++) {
+    digitalWrite(segPins[i], LOW);
+  }
+
+  // 5) Arrancar OLED y DHT11
+  dht.begin();
+
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("Error: OLED no encontrado");
+    while (true);
+  }
+
+  oled.clearDisplay();
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setTextSize(1);
+  oled.setCursor(12, 24);
+  oled.print("Conectando WiFi...");
+  oled.display();
+
+  WiFi.begin(SSID, PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) delay(500);
+
+  configTime(UTC_OFFSET, 0, "pool.ntp.org");
+
+  struct tm t;
+  while (!getLocalTime(&amp;t)) delay(500);
+
+  oled.clearDisplay();
+  oled.setCursor(10, 24);
+  oled.print("Listo! Sincronizado.");
+  oled.display();
+  delay(1200);
+}
+
+// ── Loop ───────────────────────────────────────────────────────
+void loop() {
+  struct tm t;
+  if (!getLocalTime(&amp;t)) return;
+
+  float temp = dht.readTemperature();
+  float hum  = dht.readHumidity();
+
+  oled.clearDisplay();
+
+  char hora[9];
+  strftime(hora, sizeof(hora), "%H:%M:%S", &amp;t);
+  oled.setTextSize(2);
+  oled.setCursor(4, 2);
+  oled.print(hora);
+
+  oled.drawLine(0, 22, 127, 22, SSD1306_WHITE);
+
+  char fecha[11];
+  strftime(fecha, sizeof(fecha), "%d/%m/%Y", &amp;t);
+  oled.setTextSize(1);
+  oled.setCursor(0, 26);
+  oled.print(DIAS[t.tm_wday]);
+  oled.print("  ");
+  oled.print(fecha);
+
+  oled.drawLine(0, 38, 127, 38, SSD1306_WHITE);
+
+  oled.setCursor(0, 42);
+  if (!isnan(temp)) {
+    oled.print("Temp: ");
+    oled.print(temp, 1);
+    oled.print(" C");
+  } else {
+    oled.print("Temp: -- C");
+  }
+
+  oled.setCursor(0, 54);
+  if (!isnan(hum)) {
+    oled.print("Hum:  ");
+    oled.print((int)hum);
+    oled.print(" %");
+  } else {
+    oled.print("Hum:  -- %");
+  }
+
+  oled.display();
+  delay(1000);
+}`;
+---
+<ProjectLayout title="7-SEG 01 · Demo Contador + Reloj OLED — ESP32" label="7-SEG 01" pageName="Demo Contador + Reloj OLED">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge medio">Intermedio</span>
+      <span class="cat-tag">Pantallas · WiFi · Sensores</span>
+    </div>
+    <p class="desc">
+      Al encender, el ESP-32 recorre los dígitos del 0 al 9 en el display de 7 segmentos
+      (un segundo por número) y luego parpadea el punto decimal cuatro veces.
+      Una vez terminada la demostración, el display se apaga y el sistema arranca el reloj en
+      la pantalla OLED: sincroniza la hora por NTP vía WiFi y muestra la hora, fecha, temperatura
+      y humedad del DHT11 actualizadas cada segundo.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Componentes</div>
+    <div class="comp-list">
+      <div class="comp-item"><div class="cdot"></div><span class="cname">ESP-32 Board</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">7-Segment Display (1 dígito, ánodo común)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">0.96" OLED Display (I2C)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">DHT11 Temp &amp; Humidity</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Resistores 220 Ω (uno por segmento)</span><span class="cqty">8 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Protoboard + cables Dupont</span><span class="cqty">—</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>7-Seg — Segmento a</td><td><span class="pin">GPIO 23</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento b</td><td><span class="pin">GPIO 25</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento c</td><td><span class="pin">GPIO 26</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento d</td><td><span class="pin">GPIO 19</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento e</td><td><span class="pin">GPIO 18</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento f</td><td><span class="pin">GPIO 5</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Segmento g</td><td><span class="pin">GPIO 17</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>7-Seg — Punto decimal (DP)</td><td><span class="pin">GPIO 16</span></td><td>A través de resistor 220 Ω</td></tr>
+        <tr><td>OLED — SDA</td><td><span class="pin">GPIO 21</span></td><td>I2C datos (pin por defecto en ESP32)</td></tr>
+        <tr><td>OLED — SCL</td><td><span class="pin">GPIO 22</span></td><td>I2C reloj (pin por defecto en ESP32)</td></tr>
+        <tr><td>OLED — VCC</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
+        <tr><td>OLED — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>DHT11 — DATA</td><td><span class="pin">GPIO 4</span></td><td>—</td></tr>
+        <tr><td>DHT11 — VCC</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
+        <tr><td>DHT11 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">En Arduino IDE abre el <strong>Gestor de Librerías</strong> e instala: <code>Adafruit SSD1306</code> (que también instalará <code>Adafruit GFX</code>) y <code>DHT sensor library</code> de Adafruit.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta cada segmento del display (a–g y DP) a sus pines respectivos <strong>con un resistor de 220 Ω en serie</strong> para proteger el ESP-32. Consulta la tabla de conexiones.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Conecta la pantalla OLED y el DHT11 según la tabla. El OLED usa solo 4 cables (I2C): SDA, SCL, VCC y GND.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Edita <code>SSID</code> y <code>PASSWORD</code> con los datos de tu red WiFi doméstica.</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-text">Ajusta <code>UTC_OFFSET</code> a tu zona horaria: <code>-21600</code> para UTC-6 (México Centro), <code>-18000</code> para UTC-5 (México Noroeste / Bogotá / Lima), <code>-10800</code> para UTC-3 (Argentina).</div></div>
+      <div class="step"><div class="step-n">6</div><div class="step-text">Sube el código. Verás el display contar del 0 al 9, parpadear el punto decimal y apagarse. Luego la OLED mostrará "Conectando WiFi..." y arrancará el reloj.</div></div>
+    </div>
+    <div class="note">
+      <strong>Tip:</strong> Si el 7-Seg muestra los dígitos mal o invertidos, revisa que el display sea de <em>cátodo común</em> (GND al common) o <em>ánodo común</em> (VCC al common). En ánodo común, los niveles HIGH/LOW se invierten; ajusta los valores en el arreglo <code>numbers[][]</code> (cambia 1 por 0 y viceversa).
+    </div>
+  </section>
+</ProjectLayout>
