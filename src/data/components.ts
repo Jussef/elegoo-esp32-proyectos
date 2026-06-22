@@ -98,7 +98,7 @@ export const components: Component[] = [
     { title: "Ventilador automático", desc: "Enciende el fan cuando el DHT11 detecta calor excesivo.", diff: "facil", parts: "Fan Motor, DHT11, Transistor PN2222" },
     { title: "Anemómetro casero", desc: "Mide velocidad del viento contando las revoluciones del fan.", diff: "medio", parts: "Fan Motor, IR sensor" },
   ]},
-  { name: "Active & Passive Buzzer", qty: "1PC c/u", icon: "🔊", cat: "audio", projects: [
+  { name: "Active & Passive Buzzer", qty: "1PC c/u", icon: "🔊", cat: "audio", demo: "/demos/buzzer-test", projects: [
     { title: "Piano de 4 teclas", desc: "Cada botón toca una nota diferente con el buzzer pasivo.", diff: "facil", parts: "Passive Buzzer, Button 5PCS" },
     { title: "Alarma de temperatura", desc: "Suena cuando el DHT11 detecta temperatura peligrosa.", diff: "facil", parts: "Active Buzzer, DHT11" },
     { title: "Reproductor de melodías", desc: "Toca canciones como Star Wars o Mario con el buzzer pasivo.", diff: "medio", parts: "Passive Buzzer" },

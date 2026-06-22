@@ -1,34 +1,30 @@
 ---
 import ProjectLayout from '../../layouts/ProjectLayout.astro';
-const code = String.raw`#define PIN_MOTOR  25   // GPIO 25 -&gt; (resistencia 1k) -&gt; base del PN2222
+const code = String.raw`
+#define PIN_MOTOR  25
 
-// PWM por hardware del ESP-32 (LEDC)
-const int CANAL    = 0;      // canal LEDC 0..15
-const int FREC     = 1000;   // 1 kHz, suave para un motor pequeno
-const int RES_BITS = 8;      // resolucion 8 bits -&gt; valores 0..255
+const int FREC     = 1000;
+const int RES_BITS = 8;
 
 void setup() {
   Serial.begin(115200);
   delay(300);
-  ledcSetup(CANAL, FREC, RES_BITS);   // configurar el canal PWM
-  ledcAttachPin(PIN_MOTOR, CANAL);    // enlazar el GPIO a ese canal
+  ledcAttach(PIN_MOTOR, FREC, RES_BITS);
   Serial.println("Motor listo. Probando velocidades...\n");
 }
 
-void setVelocidad(int pct) {          // pct: 0..100 %
+void setVelocidad(int pct) {
   int duty = map(pct, 0, 100, 0, 255);
-  ledcWrite(CANAL, duty);
+  ledcWrite(PIN_MOTOR, duty);  // <-- PIN, no CANAL
   Serial.printf("Velocidad: %3d %%  (duty %d/255)\n", pct, duty);
 }
 
 void loop() {
-  // Subir de 0 a 100 % poco a poco
-  for (int v = 0; v &lt;= 100; v += 25) {
+  for (int v = 0; v <= 100; v += 25) {
     setVelocidad(v);
     delay(1500);
   }
-  // Bajar de 100 a 0 %
-  for (int v = 75; v &gt;= 0; v -= 25) {
+  for (int v = 75; v >= 0; v -= 25) {
     setVelocidad(v);
     delay(1500);
   }

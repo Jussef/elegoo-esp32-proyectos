@@ -1,0 +1,161 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define PIN_ACTIVO  25   // active buzzer → solo HIGH/LOW
+#define PIN_PASIVO  26   // passive buzzer → necesita PWM
+
+// Escala Do-Re-Mi (C4-C5) en Hz
+const int   NOTAS[]    = { 262, 294, 330, 349, 392, 440, 494, 523 };
+const char* NOMBRES[]  = { "Do ", "Re ", "Mi ", "Fa ", "Sol", "La ", "Si ", "Do " };
+
+void beepActivo(int veces, int ms) {
+  for (int i = 0; i < veces; i++) {
+    digitalWrite(PIN_ACTIVO, HIGH);
+    delay(ms);
+    digitalWrite(PIN_ACTIVO, LOW);
+    delay(ms);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+
+  // --- Active Buzzer ---
+  pinMode(PIN_ACTIVO, OUTPUT);
+  Serial.println("=== Active Buzzer ===");
+  Serial.println("3 bips cortos...");
+  beepActivo(3, 150);
+  Serial.println("1 bip largo...");
+  beepActivo(1, 800);
+
+  delay(600);
+
+  // --- Passive Buzzer ---
+  ledcAttach(PIN_PASIVO, 1000, 8);
+  Serial.println("\n=== Passive Buzzer (escala Do-Re-Mi) ===");
+  for (int i = 0; i < 8; i++) {
+    Serial.printf("  %s  (%d Hz)\n", NOMBRES[i], NOTAS[i]);
+    ledcWriteTone(PIN_PASIVO, NOTAS[i]);
+    delay(400);
+  }
+  ledcWriteTone(PIN_PASIVO, 0);   // silencio
+
+  Serial.println("\n¡Test completado! Ambos buzzers OK.");
+}
+
+void loop() {}`;
+---
+<ProjectLayout title="Demo · Prueba Active &amp; Passive Buzzer — ESP32" label="DEMO" pageName="Prueba Active &amp; Passive Buzzer">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Audio · PWM / Digital</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tus dos buzzers: primero hace sonar el <strong>active buzzer</strong>
+      con bips digitales (solo HIGH/LOW), y luego toca una <strong>escala Do-Re-Mi</strong> completa
+      con el <strong>passive buzzer</strong> usando PWM. Es la forma más rápida de confirmar que
+      ambos funcionan y de ver la diferencia clave entre los dos.
+    </p>
+    <div class="note buzzer-diff" style="margin-top:14px;">
+      <strong>¿Cuál es cuál?</strong> El <strong>active buzzer</strong> tiene un oscilador interno:
+      basta con darle corriente para que suene. El <strong>passive buzzer</strong> no tiene oscilador:
+      necesitas enviarle una señal PWM con la frecuencia del tono que quieres. Visualmente, el activo
+      suele tener una pegatina blanca encima; el pasivo se ve el interior desde arriba.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Active Buzzer — S</td><td><span class="pin">GPIO 25</span></td><td>HIGH = suena, LOW = silencio</td></tr>
+        <tr><td>Active Buzzer — VCC (+)</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
+        <tr><td>Active Buzzer — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td class="sep" colspan="3"></td></tr>
+        <tr><td>Passive Buzzer — S</td><td><span class="pin">GPIO 26</span></td><td>Señal PWM para generar el tono</td></tr>
+        <tr><td>Passive Buzzer — VCC (+)</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
+        <tr><td>Passive Buzzer — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      Puedes conectar los dos buzzers al mismo tiempo: el sketch los usa en secuencia,
+      primero el activo y luego el pasivo. Asegúrate de que los <strong>GND del ESP-32
+      y de los módulos estén unidos</strong>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">=== Active Buzzer ===
+3 bips cortos...
+1 bip largo...
+
+=== Passive Buzzer (escala Do-Re-Mi) ===
+  Do   (262 Hz)
+  Re   (294 Hz)
+  Mi   (330 Hz)
+  Fa   (349 Hz)
+  Sol  (392 Hz)
+  La   (440 Hz)
+  Si   (494 Hz)
+  Do   (523 Hz)
+
+¡Test completado! Ambos buzzers OK.</div>
+    <div class="note" style="margin-top:14px;">
+      El <strong>active buzzer</strong> emitirá 3 pitidos cortos seguidos de uno largo.
+      Después, el <strong>passive buzzer</strong> subirá la escala nota a nota hasta el Do
+      agudo y luego se callará. Si escuchas los dos sonidos distintos, ¡ambos buzzers funcionan!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el <strong>active buzzer</strong>: <code>S → GPIO 25</code>, <code>VCC → 3.3V</code>, <code>GND → GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el <strong>passive buzzer</strong>: <code>S → GPIO 26</code>, <code>VCC → 3.3V</code>, <code>GND → GND</code>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text"><strong>No hace falta ninguna librería.</strong> El sketch usa <code>ledcAttach</code> y <code>ledcWriteTone</code>, que ya vienen con el core del ESP-32.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios. Escucharás primero los bips y luego la escala.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿El active buzzer no suena?</strong> Comprueba que el pin <code>S</code> esté en <code>GPIO 25</code>
+      y que la polaridad sea correcta (el <code>+</code> es el pin largo si es un buzzer suelto).
+      <strong>¿El passive buzzer no suena?</strong> Asegúrate de que usas el pasivo (sin pegatina) en
+      <code>GPIO 26</code> y de que el core del ESP-32 sea la versión <code>3.x</code> para
+      que <code>ledcWriteTone</code> esté disponible.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+.note.buzzer-diff { background: rgba(168,85,247,0.07); border-color: rgba(168,85,247,0.22); }
+.note.buzzer-diff strong { color: rgba(216,180,254,0.9); }
+table .sep td { padding: 4px 0; border: none; background: transparent; }
+</style>
