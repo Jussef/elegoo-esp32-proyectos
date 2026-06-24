@@ -73,19 +73,17 @@ void loop() {}`;
         <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
       </thead>
       <tbody>
-        <tr><td>Active Buzzer — S</td><td><span class="pin">GPIO 25</span></td><td>HIGH = suena, LOW = silencio</td></tr>
-        <tr><td>Active Buzzer — VCC (+)</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
-        <tr><td>Active Buzzer — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>Active Buzzer — (+)</td><td><span class="pin">GPIO 25</span></td><td>HIGH = suena, LOW = silencio</td></tr>
+        <tr><td>Active Buzzer — (−)</td><td><span class="pin">GND</span></td><td>Patita corta o marcada con (−)</td></tr>
         <tr><td class="sep" colspan="3"></td></tr>
-        <tr><td>Passive Buzzer — S</td><td><span class="pin">GPIO 26</span></td><td>Señal PWM para generar el tono</td></tr>
-        <tr><td>Passive Buzzer — VCC (+)</td><td><span class="pin">3.3V</span></td><td>—</td></tr>
-        <tr><td>Passive Buzzer — GND (−)</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>Passive Buzzer — (+)</td><td><span class="pin">GPIO 26</span></td><td>Señal PWM para generar el tono</td></tr>
+        <tr><td>Passive Buzzer — (−)</td><td><span class="pin">GND</span></td><td>Patita corta o marcada con (−)</td></tr>
       </tbody>
     </table>
     <div class="note" style="margin-top:12px;">
-      Puedes conectar los dos buzzers al mismo tiempo: el sketch los usa en secuencia,
-      primero el activo y luego el pasivo. Asegúrate de que los <strong>GND del ESP-32
-      y de los módulos estén unidos</strong>.
+      Ambos buzzers solo tienen <strong>2 patitas</strong>: la larga es el (+) y va al GPIO,
+      la corta es el (−) y va a GND. Puedes conectarlos al mismo tiempo; el sketch los
+      usa en secuencia, primero el activo y luego el pasivo.
     </div>
   </section>
 
@@ -127,14 +125,14 @@ void loop() {}`;
   <section class="section">
     <div class="section-label">Cómo usar</div>
     <div class="steps">
-      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el <strong>active buzzer</strong>: <code>S → GPIO 25</code>, <code>VCC → 3.3V</code>, <code>GND → GND</code>.</div></div>
-      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el <strong>passive buzzer</strong>: <code>S → GPIO 26</code>, <code>VCC → 3.3V</code>, <code>GND → GND</code>.</div></div>
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el <strong>active buzzer</strong>: patita larga <code>(+) → GPIO 25</code>, patita corta <code>(−) → GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el <strong>passive buzzer</strong>: patita larga <code>(+) → GPIO 26</code>, patita corta <code>(−) → GND</code>.</div></div>
       <div class="step"><div class="step-n">3</div><div class="step-text"><strong>No hace falta ninguna librería.</strong> El sketch usa <code>ledcAttach</code> y <code>ledcWriteTone</code>, que ya vienen con el core del ESP-32.</div></div>
       <div class="step"><div class="step-n">4</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios. Escucharás primero los bips y luego la escala.</div></div>
     </div>
     <div class="note">
-      <strong>¿El active buzzer no suena?</strong> Comprueba que el pin <code>S</code> esté en <code>GPIO 25</code>
-      y que la polaridad sea correcta (el <code>+</code> es el pin largo si es un buzzer suelto).
+      <strong>¿El active buzzer no suena?</strong> Comprueba que la patita larga <code>(+)</code> vaya a <code>GPIO 25</code>
+      y la corta <code>(−)</code> a GND. Si está al revés, no suena ni se daña — solo dale vuelta.
       <strong>¿El passive buzzer no suena?</strong> Asegúrate de que usas el pasivo (sin pegatina) en
       <code>GPIO 26</code> y de que el core del ESP-32 sea la versión <code>3.x</code> para
       que <code>ledcWriteTone</code> esté disponible.

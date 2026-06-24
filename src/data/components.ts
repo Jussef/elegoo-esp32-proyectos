@@ -103,7 +103,7 @@ export const components: Component[] = [
     { title: "Alarma de temperatura", desc: "Suena cuando el DHT11 detecta temperatura peligrosa.", diff: "facil", parts: "Active Buzzer, DHT11" },
     { title: "Reproductor de melodías", desc: "Toca canciones como Star Wars o Mario con el buzzer pasivo.", diff: "medio", parts: "Passive Buzzer" },
   ]},
-  { name: "74HC595 + L293D ICs", qty: "1PC c/u", icon: "🔲", cat: "electronica", projects: [
+  { name: "74HC595 + L293D ICs", qty: "1PC c/u", icon: "🔲", cat: "electronica", demo: "/demos/74hc595-l293d-test", projects: [
     { title: "Control de motor DC", desc: "Usa el L293D para controlar velocidad y dirección de un motor.", diff: "medio", parts: "L293D, Fan Motor, Potenciómetro" },
     { title: "Expansión de salidas", desc: "Controla 8 LEDs con solo 3 pines usando el 74HC595.", diff: "medio", parts: "74HC595, LED 25PCS" },
   ]},
