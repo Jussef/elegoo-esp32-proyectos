@@ -1,0 +1,148 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;SPI.h&gt;
+#include &lt;MFRC522.h&gt;
+
+#define PIN_SS   5
+#define PIN_RST  27
+
+MFRC522 rfid(PIN_SS, PIN_RST);
+
+void setup() {
+  Serial.begin(115200);
+  SPI.begin();
+  rfid.PCD_Init();
+  Serial.println("Lector RC522 listo.");
+  Serial.println("Acerca una tarjeta o llavero RFID...\n");
+}
+
+void loop() {
+  // Si no hay tarjeta nueva, seguir esperando
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+    delay(50);
+    return;
+  }
+
+  // Imprimir UID byte a byte en hexadecimal
+  Serial.print("UID: ");
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    if (rfid.uid.uidByte[i] < 0x10) Serial.print("0");
+    Serial.print(rfid.uid.uidByte[i], HEX);
+    if (i < rfid.uid.size - 1) Serial.print(":");
+  }
+  Serial.println();
+
+  // Tipo de tarjeta (MIFARE 1KB, MIFARE Mini, etc.)
+  MFRC522::PICC_Type tipo = rfid.PICC_GetType(rfid.uid.sak);
+  Serial.print("Tipo: ");
+  Serial.println(rfid.PICC_GetTypeName(tipo));
+  Serial.println("---");
+
+  rfid.PICC_HaltA();        // pausa la comunicación con la tarjeta
+  rfid.PCD_StopCrypto1();   // libera el cifrado
+  delay(1000);              // espera 1 s antes de leer de nuevo
+}`;
+---
+<ProjectLayout title="Demo · RC522 RFID Module — ESP32" label="DEMO" pageName="RC522 — Lector RFID">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">RFID · SPI · RC522</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla del <strong>módulo RC522</strong>: espera a que acerques la tarjeta
+      o el llavero RFID incluidos en el kit, lee su <strong>UID único</strong> y lo muestra en el
+      Monitor Serie. Sirve para confirmar el cableado SPI, verificar que la librería funciona y
+      obtener el UID de tus tarjetas antes de usarlas en proyectos de control de acceso.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>RC522</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>3.3V</td><td><span class="pin">3.3V</span></td><td class="warn">¡Solo 3.3V — el módulo se daña con 5V!</td></tr>
+        <tr><td>GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+        <tr><td>SDA (SS)</td><td><span class="pin">GPIO 5</span></td><td>Chip Select SPI</td></tr>
+        <tr><td>SCK</td><td><span class="pin">GPIO 18</span></td><td>Reloj SPI</td></tr>
+        <tr><td>MOSI</td><td><span class="pin">GPIO 23</span></td><td>Datos ESP-32 → RC522</td></tr>
+        <tr><td>MISO</td><td><span class="pin">GPIO 19</span></td><td>Datos RC522 → ESP-32</td></tr>
+        <tr><td>RST</td><td><span class="pin">GPIO 27</span></td><td>Reset del módulo</td></tr>
+        <tr><td>IRQ</td><td>—</td><td>No se usa en este demo</td></tr>
+      </tbody>
+    </table>
+    <div class="note danger" style="margin-top:12px;">
+      <strong>Voltaje crítico:</strong> el RC522 opera a <strong>3.3V</strong>. Conectarlo a 5V lo
+      destruye al instante. Usa siempre el pin <code>3.3V</code> del ESP-32, nunca <code>VIN</code>
+      ni <code>5V</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">Lector RC522 listo.
+Acerca una tarjeta o llavero RFID...
+
+UID: A3:F2:01:7C
+Tipo: MIFARE 1KB
+---
+UID: 4B:8E:22:D1
+Tipo: MIFARE 1KB
+---</div>
+    <div class="note" style="margin-top:14px;">
+      Cada tarjeta o llavero tiene un <strong>UID único e irrepetible</strong> grabado de fábrica.
+      Anota los UIDs de tus tarjetas: los necesitarás para compararlos en proyectos de
+      control de acceso (<code>if (uid == "A3:F2:01:7C") abrirPuerta();</code>).
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Instala la librería <strong>MFRC522</strong> en el Arduino IDE: <em>Herramientas → Administrar librerías → busca "MFRC522" → instala la de GithubCommunity</em>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Cablea el módulo según la tabla: <code>3.3V</code>, <code>GND</code>, <code>SDA → GPIO 5</code>, <code>SCK → GPIO 18</code>, <code>MOSI → GPIO 23</code>, <code>MISO → GPIO 19</code>, <code>RST → GPIO 27</code>.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie a 115200 baudios</strong>.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Acerca la <strong>tarjeta blanca</strong> o el <strong>llavero</strong> al módulo y verás su UID impreso. Prueba con ambos para confirmar que los dos funcionan.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿No detecta nada?</strong> Verifica que <code>SDA</code> esté en <code>GPIO 5</code> y que
+      el módulo recibe <strong>3.3V</strong> (no 5V). Si el Monitor Serie muestra basura, revisa que
+      la velocidad sea <code>115200</code>.<br><br>
+      <strong>¿Error de compilación?</strong> Asegúrate de haber instalado la librería
+      <strong>MFRC522</strong> y de que el core del ESP-32 esté actualizado en el gestor de placas.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+.note.danger { background: rgba(239,68,68,0.07); border-color: rgba(239,68,68,0.22); }
+.note.danger strong { color: rgba(248,113,113,0.9); }
+td.warn { color: rgba(248,113,113,0.8); font-size: 12px; }
+</style>

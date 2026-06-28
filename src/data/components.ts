@@ -107,7 +107,7 @@ export const components: Component[] = [
     { title: "Control de motor DC", desc: "Usa el L293D para controlar velocidad y dirección de un motor.", diff: "medio", parts: "L293D, Fan Motor, Potenciómetro" },
     { title: "Expansión de salidas", desc: "Controla 8 LEDs con solo 3 pines usando el 74HC595.", diff: "medio", parts: "74HC595, LED 25PCS" },
   ]},
-  { name: "RC522 RFID Module", qty: "1PC", icon: "💳", cat: "comunicacion", projects: [
+  { name: "RC522 RFID Module", qty: "1PC", icon: "💳", cat: "comunicacion", demo: "/demos/rc522-rfid-test", projects: [
     { title: "Control de acceso", desc: "Abre una cerradura solo con tu tarjeta RFID autorizada.", diff: "medio", parts: "RC522, Servo SG90, Relay" },
     { title: "Registro de asistencia", desc: "Registra quién pasó y a qué hora usando RFID.", diff: "avanzado", parts: "RC522, ESP-32, OLED" },
     { title: "Alcancía inteligente", desc: "Muestra cuánto has ahorrado al pasar una moneda con RFID.", diff: "facil", parts: "RC522, OLED" },
