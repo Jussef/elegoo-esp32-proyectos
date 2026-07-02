@@ -1,0 +1,132 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#define PIN_PIR  27   // OUT del HC-SR501 -&gt; GPIO 27 (entrada digital)
+#define PIN_LED  2    // LED integrado del ESP-32 (indicador visual)
+
+int estadoAnterior = LOW;
+
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  pinMode(PIN_PIR, INPUT);
+  pinMode(PIN_LED, OUTPUT);
+  digitalWrite(PIN_LED, LOW);
+
+  // El HC-SR501 necesita ~30-60 s para "calibrarse" al encender.
+  Serial.println("HC-SR501 calentando (espera ~30 s sin moverte)...");
+  delay(2000);
+  Serial.println("Listo. Detectando movimiento...\n");
+}
+
+void loop() {
+  int estado = digitalRead(PIN_PIR);
+
+  // Solo imprimimos cuando CAMBIA el estado (no en cada vuelta)
+  if (estado != estadoAnterior) {
+    if (estado == HIGH) {
+      Serial.println(">> Movimiento DETECTADO");
+      digitalWrite(PIN_LED, HIGH);
+    } else {
+      Serial.println("   Sin movimiento (reposo)");
+      digitalWrite(PIN_LED, LOW);
+    }
+    estadoAnterior = estado;
+  }
+
+  delay(50);
+}`;
+---
+<ProjectLayout title="Demo · Prueba Sensor PIR (HC-SR501) — ESP32" label="DEMO" pageName="Prueba Sensor PIR (HC-SR501)">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Movimiento</span>
+    </div>
+    <p class="desc">
+      La prueba más sencilla para tu sensor de movimiento <strong>HC-SR501 PIR</strong>: detecta el
+      <strong>calor en movimiento</strong> de personas o animales (radiación infrarroja) y pone su pin
+      <code>OUT</code> en <strong>ALTO</strong> cuando hay movimiento. El ESP-32 lee ese pin, enciende el
+      <strong>LED integrado</strong> y avisa por el Monitor Serie. Sirve para confirmar que el sensor
+      <strong>está bien conectado</strong> y reacciona cuando pasas frente a él. No necesita librerías externas.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente</th><th>Pin ESP-32</th><th>Notas</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>HC-SR501 — VCC</td><td><span class="pin">5V (VIN)</span></td><td>El PIR funciona de 4.5V a 20V; usa 5V</td></tr>
+        <tr><td>HC-SR501 — OUT</td><td><span class="pin">GPIO 27</span></td><td>Salida digital: 3.3V en alto (seguro para el ESP-32)</td></tr>
+        <tr><td>HC-SR501 — GND</td><td><span class="pin">GND</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Los dos potenciómetros naranjas:</strong> uno ajusta la <strong>sensibilidad</strong> (alcance,
+      ~3 a 7 m) y el otro el <strong>tiempo</strong> que la salida queda en alto tras detectar (de ~3 s a ~5 min).
+      Para esta prueba, déjalos en una posición media. El <strong>jumper</strong> en modo <code>H</code>
+      (retrigger) mantiene la señal mientras siga habiendo movimiento; en <code>L</code> hace un solo disparo.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">HC-SR501 calentando (espera ~30 s sin moverte)...
+Listo. Detectando movimiento...
+
+&gt;&gt; Movimiento DETECTADO
+   Sin movimiento (reposo)
+&gt;&gt; Movimiento DETECTADO
+   Sin movimiento (reposo)</div>
+    <div class="note" style="margin-top:14px;">
+      <strong>Pasa la mano o camina frente al sensor:</strong> debe aparecer <code>Movimiento DETECTADO</code>
+      y encenderse el LED azul de la placa. Al quedarte quieto, tras el tiempo configurado vuelve a
+      <code>reposo</code> y el LED se apaga. ¡Si reacciona, funciona!
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el HC-SR501: <code>VCC→5V</code>, <code>OUT→GPIO 27</code> y <code>GND→GND</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text"><strong>No hace falta instalar ninguna librería</strong>: el código solo usa <code>digitalRead()</code>, que ya viene con el core del ESP-32.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie</strong> a <code>115200</code> baudios.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text"><strong>Espera ~30-60 s sin moverte</strong> mientras el sensor se calibra; luego pasa frente a él y observa el LED y los mensajes.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Se queda siempre en "DETECTADO" o dispara solo?</strong> Baja la <strong>sensibilidad</strong>
+      con el potenciómetro, aléjalo de fuentes de calor (sol directo, ventiladores, focos) y dale el tiempo de
+      calentamiento inicial. Recuerda que el PIR detecta <strong>cambios</strong> de calor: un objeto inmóvil
+      no lo activa, por eso necesita movimiento.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>
