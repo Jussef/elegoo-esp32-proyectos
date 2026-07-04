@@ -124,7 +124,7 @@ export const components: Component[] = [
     { title: "Calculadora", desc: "Calculadora básica con teclado matricial y display OLED.", diff: "medio", parts: "Keypad, OLED", link: "/proyectos-oled/5-calculadora" },
     { title: "Sistema de menú", desc: "Navega entre opciones de configuración con el teclado.", diff: "facil", parts: "Keypad, OLED" },
   ]},
-  { name: "Button + Potenciómetro", qty: "5 / 1PC", icon: "🔘", img: "/img/boton.png", cat: "control", projects: [
+  { name: "Button + Potenciómetro", qty: "5 / 1PC", icon: "🔘", img: "/img/boton.png", cat: "control", demo: "/demos/button-poten-test", projects: [
     { title: "Control de brillo LED", desc: "El potenciómetro ajusta el brillo de un LED con PWM.", diff: "facil", parts: "Potenciómetro, LED, Resistor" },
     { title: "Selección de modos", desc: "Los botones seleccionan diferentes efectos de luz o melodías.", diff: "facil", parts: "Buttons, LED, Passive Buzzer" },
   ]},

@@ -1,0 +1,144 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`const int PIN_POT   = 34;   // potenciómetro (pin central) — solo entrada ADC
+const int PIN_BOTON = 25;   // botón a GND (usa el pull-up interno)
+
+int  lecturaAnterior = -1;
+bool botonAnterior   = HIGH;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_BOTON, INPUT_PULLUP);
+  Serial.println("Button + Potenciometro listo.");
+  Serial.println("Gira el potenciometro y presiona el boton...\n");
+}
+
+void loop() {
+  // --- Potenciómetro ---
+  int valor = analogRead(PIN_POT);            // 0 - 4095
+  int porcentaje = map(valor, 0, 4095, 0, 100);
+
+  // Solo imprime si el valor cambió bastante (no satura el monitor)
+  if (abs(valor - lecturaAnterior) &gt; 40) {
+    lecturaAnterior = valor;
+
+    // Barra visual de 20 caracteres
+    int bloques = map(porcentaje, 0, 100, 0, 20);
+    String barra = "";
+    for (int i = 0; i &lt; 20; i++) barra += (i &lt; bloques) ? '#' : '-';
+
+    Serial.printf("Pot: %4d  [%s] %3d%%\n", valor, barra.c_str(), porcentaje);
+  }
+
+  // --- Botón (con antirrebote sencillo) ---
+  bool boton = digitalRead(PIN_BOTON);
+  if (boton == LOW &amp;&amp; botonAnterior == HIGH) {
+    Serial.println("&gt;&gt;&gt; Boton PRESIONADO");
+    delay(30);   // antirrebote
+  }
+  botonAnterior = boton;
+
+  delay(20);
+}`;
+---
+<ProjectLayout title="Demo · Button + Potenciómetro — ESP32" label="DEMO" pageName="Button + Potenciómetro — Prueba de entrada analógica y digital">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Control · Entrada analógica + botón</span>
+    </div>
+    <p class="desc">
+      Prueba rápida del <strong>potenciómetro</strong> y de un <strong>botón</strong>. Al girar el
+      potenciómetro verás en el Monitor Serie el valor crudo del ADC (0–4095), su porcentaje y una
+      barra visual; al presionar el botón aparece un aviso <code>&gt;&gt;&gt; Boton PRESIONADO</code>.
+      Sirve para verificar que la entrada analógica lee todo el rango y que el botón detecta la
+      pulsación antes de usarlos en proyectos reales.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente (pin)</th><th>Función</th><th>GPIO ESP-32</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Potenciómetro — extremo 1</td><td>Alimentación</td><td><span class="pin">3V3</span></td></tr>
+        <tr><td>Potenciómetro — pin central (cursor)</td><td>Señal analógica</td><td><span class="pin">GPIO 34</span></td></tr>
+        <tr><td>Potenciómetro — extremo 2</td><td>Tierra</td><td><span class="pin">GND</span></td></tr>
+        <tr><td>Botón — pata A</td><td>Señal (pull-up interno)</td><td><span class="pin">GPIO 25</span></td></tr>
+        <tr><td>Botón — pata B</td><td>Tierra</td><td><span class="pin">GND</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>GPIO 34 es solo de entrada</strong> y no tiene pull-up interno: es perfecto para el
+      potenciómetro (señal analógica) pero <em>no</em> sirve para el botón. Por eso el botón usa
+      <strong>GPIO 25</strong> con <code>INPUT_PULLUP</code>, así <strong>no necesitas resistencia
+      externa</strong>: en reposo el pin está en <code>HIGH</code> y al pulsar cae a <code>LOW</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">Button + Potenciometro listo.
+Gira el potenciometro y presiona el boton...
+
+Pot:    0  [--------------------]   0%
+Pot: 1024  [#####---------------]  25%
+Pot: 2048  [##########----------]  50%
+Pot: 3071  [###############-----]  75%
+Pot: 4095  [####################] 100%
+&gt;&gt;&gt; Boton PRESIONADO
+&gt;&gt;&gt; Boton PRESIONADO</div>
+    <div class="note" style="margin-top:14px;">
+      Gira el potenciómetro de un extremo a otro: el valor debe recorrer <strong>de 0 a 4095</strong>
+      de forma suave. Si se queda pegado en un extremo o salta de golpe, revisa que el pin central
+      vaya a <code>GPIO 34</code> y los extremos a <code>3V3</code> y <code>GND</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta el potenciómetro: los dos extremos a <code>3V3</code> y <code>GND</code>, y el pin central (cursor) a <code>GPIO 34</code>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el botón: una pata a <code>GPIO 25</code> y la pata opuesta (en diagonal) a <code>GND</code>. No hace falta resistencia externa.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie a 115200 baudios</strong>.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Gira el potenciómetro y observa cómo cambian el valor y la barra. Presiona el botón para ver el aviso.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿El potenciómetro no llega a 4095 o a 0?</strong> El pin <code>GPIO 34</code> lee de 0 a
+      3.3V. Asegúrate de alimentar el potenciómetro desde <code>3V3</code> (no desde 5V) para leer el
+      rango completo sin dañar la entrada.<br><br>
+      <strong>¿El botón se dispara solo o al revés?</strong> En un botón de 4 patas, las patas del
+      mismo lado están unidas internamente. Usa dos patas <strong>en diagonal</strong> para que el
+      pulsador abra y cierre correctamente el circuito.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>
