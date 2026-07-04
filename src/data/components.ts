@@ -119,7 +119,7 @@ export const components: Component[] = [
     { title: "Alarma de seguridad", desc: "Activa buzzer y envía notificación al celular al detectar movimiento.", diff: "medio", parts: "HC-SR501, ESP-32, Active Buzzer" },
     { title: "Contador de personas", desc: "Cuenta cuántas veces alguien pasa frente al sensor.", diff: "medio", parts: "HC-SR501, OLED" },
   ]},
-  { name: "Membrane Switch Keypad", qty: "1PC", icon: "⌨️", img: "/img/number-membrana.png", cat: "control", projects: [
+  { name: "Membrane Switch Keypad", qty: "1PC", icon: "⌨️", img: "/img/number-membrana.png", cat: "control", demo: "/demos/keypad-test", projects: [
     { title: "Caja fuerte con PIN", desc: "Introduce un PIN de 4 dígitos para abrir la cerradura.", diff: "medio", parts: "Keypad, Servo SG90, OLED" },
     { title: "Calculadora", desc: "Calculadora básica con teclado matricial y display OLED.", diff: "medio", parts: "Keypad, OLED", link: "/proyectos-oled/5-calculadora" },
     { title: "Sistema de menú", desc: "Navega entre opciones de configuración con el teclado.", diff: "facil", parts: "Keypad, OLED" },

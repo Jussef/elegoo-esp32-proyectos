@@ -1,0 +1,147 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`#include &lt;Keypad.h&gt;
+
+const byte FILAS = 4;
+const byte COLS  = 4;
+
+char teclas[FILAS][COLS] = {
+  { '1', '2', '3', 'A' },
+  { '4', '5', '6', 'B' },
+  { '7', '8', '9', 'C' },
+  { '*', '0', '#', 'D' }
+};
+
+byte pinesFilas[FILAS] = { 13, 12, 14, 27 };
+byte pinesCols[COLS]   = { 26, 25, 33, 32 };
+
+Keypad teclado = Keypad(makeKeymap(teclas), pinesFilas, pinesCols, FILAS, COLS);
+
+String entrada = "";
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Teclado listo. Presiona cualquier tecla...");
+  Serial.println("  *  = borrar   |  #  = confirmar\n");
+}
+
+void loop() {
+  char tecla = teclado.getKey();
+
+  if (!tecla) return;
+
+  if (tecla == '*') {
+    entrada = "";
+    Serial.println("[borrado]");
+  } else if (tecla == '#') {
+    Serial.printf("[confirmado]  Entrada: \"%s\"\n", entrada.c_str());
+    entrada = "";
+  } else {
+    entrada += tecla;
+    Serial.printf("Tecla: %c  |  Buffer: %s\n", tecla, entrada.c_str());
+  }
+}`;
+---
+<ProjectLayout title="Demo · Membrane Switch Keypad — ESP32" label="DEMO" pageName="Keypad 4×4 — Prueba de teclado matricial">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Control · Teclado matricial 4×4</span>
+    </div>
+    <p class="desc">
+      Prueba rápida del <strong>teclado matricial de membrana 4×4</strong>: cada tecla que presiones
+      aparece en el Monitor Serie junto con el buffer acumulado. Usa <strong>*</strong> para borrar
+      la entrada y <strong>#</strong> para confirmarla. Sirve para verificar que los 16 pines
+      funcionan y para aprender el cableado de filas y columnas antes de usarlo en proyectos reales.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Keypad (pin)</th><th>Función</th><th>GPIO ESP-32</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pin 1</td><td>Fila 1 (1, 2, 3, A)</td><td><span class="pin">GPIO 13</span></td></tr>
+        <tr><td>Pin 2</td><td>Fila 2 (4, 5, 6, B)</td><td><span class="pin">GPIO 12</span></td></tr>
+        <tr><td>Pin 3</td><td>Fila 3 (7, 8, 9, C)</td><td><span class="pin">GPIO 14</span></td></tr>
+        <tr><td>Pin 4</td><td>Fila 4 (*, 0, #, D)</td><td><span class="pin">GPIO 27</span></td></tr>
+        <tr><td>Pin 5</td><td>Columna 1 (1, 4, 7, *)</td><td><span class="pin">GPIO 26</span></td></tr>
+        <tr><td>Pin 6</td><td>Columna 2 (2, 5, 8, 0)</td><td><span class="pin">GPIO 25</span></td></tr>
+        <tr><td>Pin 7</td><td>Columna 3 (3, 6, 9, #)</td><td><span class="pin">GPIO 33</span></td></tr>
+        <tr><td>Pin 8</td><td>Columna 4 (A, B, C, D)</td><td><span class="pin">GPIO 32</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      <strong>Pin 1</strong> es el de la izquierda mirando la parte de atrás del keypad (donde sale el
+      cable plano). <strong>No necesitas resistencias externas</strong> — la librería activa los
+      pull-ups internos del ESP-32 automáticamente.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">Teclado listo. Presiona cualquier tecla...
+  *  = borrar   |  #  = confirmar
+
+Tecla: 1  |  Buffer: 1
+Tecla: 2  |  Buffer: 12
+Tecla: 3  |  Buffer: 123
+Tecla: A  |  Buffer: 123A
+[borrado]
+Tecla: 4  |  Buffer: 4
+Tecla: 2  |  Buffer: 42
+[confirmado]  Entrada: "42"</div>
+    <div class="note" style="margin-top:14px;">
+      Presiona todas las teclas una por una para confirmar que el Monitor las detecta. Si alguna
+      tecla no aparece o aparece la <strong>tecla equivocada</strong>, es señal de que ese pin
+      está intercambiado con el de otra fila o columna.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Instala la librería <strong>Keypad</strong> en el Arduino IDE: <em>Herramientas → Administrar librerías → busca "Keypad" → instala la de Mark Stanley &amp; Alexander Brevig</em>.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Conecta el cable plano del keypad según la tabla: pines de filas a <code>GPIO 13, 12, 14, 27</code> y pines de columnas a <code>GPIO 26, 25, 33, 32</code>. El pin 1 es el extremo izquierdo del conector.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie a 115200 baudios</strong>.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Presiona teclas y comprueba que todas aparecen correctas. Usa <code>*</code> para borrar el buffer y <code>#</code> para confirmar.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿Tecla equivocada o sin respuesta?</strong> El cable plano del keypad no siempre
+      empieza por el pin 1 en el mismo extremo — depende del modelo. Si las teclas salen
+      incorrectas, invierte el orden del cable (conéctalo al revés) o intercambia los pines de
+      filas y columnas uno a uno hasta que cuadre.<br><br>
+      <strong>¿Nada en el Monitor Serie?</strong> Verifica que los pines declarados en
+      <code>pinesFilas[]</code> y <code>pinesCols[]</code> coincidan exactamente con tu cableado.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>
