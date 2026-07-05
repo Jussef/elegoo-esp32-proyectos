@@ -1,0 +1,121 @@
+---
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+const code = String.raw`const int PIN_TILT = 25;   // interruptor de bola a GND (usa el pull-up interno)
+
+bool estadoAnterior = HIGH;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_TILT, INPUT_PULLUP);
+  Serial.println("Tilt Ball Switch listo.");
+  Serial.println("Inclina la placa para mover la bola...\n");
+}
+
+void loop() {
+  bool estado = digitalRead(PIN_TILT);
+
+  // Solo imprime cuando cambia (detecta el movimiento)
+  if (estado != estadoAnterior) {
+    if (estado == LOW) {
+      Serial.println("[ NIVELADO ]  la bola cierra el contacto");
+    } else {
+      Serial.println("[ INCLINADO ] la bola abre el contacto");
+    }
+    estadoAnterior = estado;
+    delay(50);   // antirrebote sencillo
+  }
+}`;
+---
+<ProjectLayout title="Demo · Tilt Ball Switch — ESP32" label="DEMO" pageName="Tilt Ball Switch — Prueba de sensor de inclinación">
+  <section class="section">
+    <div class="section-label">Descripción</div>
+    <div class="meta">
+      <span class="badge demo">Demo de prueba</span>
+      <span class="cat-tag">Sensor · Inclinación / movimiento</span>
+    </div>
+    <p class="desc">
+      Prueba rápida del <strong>interruptor de bola (tilt switch)</strong>. Dentro del sensor hay una
+      pequeña bola metálica que, según la inclinación, une o separa dos contactos. Al inclinar la placa
+      verás en el Monitor Serie cómo cambia entre <code>[ NIVELADO ]</code> e <code>[ INCLINADO ]</code>.
+      Es un sensor <strong>digital de encendido/apagado</strong>: no mide el ángulo exacto, solo si está
+      derecho o volcado. Ideal para detectar caídas, golpes o cambios de posición.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Conexiones</div>
+    <table>
+      <thead>
+        <tr><th>Componente (pin)</th><th>Función</th><th>GPIO ESP-32</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tilt Switch — pata A</td><td>Señal (pull-up interno)</td><td><span class="pin">GPIO 25</span></td></tr>
+        <tr><td>Tilt Switch — pata B</td><td>Tierra</td><td><span class="pin">GND</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:12px;">
+      El interruptor de bola <strong>no tiene polaridad</strong>: da igual qué pata va a cada lado.
+      Al usar <code>INPUT_PULLUP</code> <strong>no necesitas resistencia externa</strong>: en reposo
+      el pin está en <code>HIGH</code> y, cuando la bola cierra el contacto, cae a <code>LOW</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Código Arduino</div>
+    <div class="code-box">
+      <div class="code-header">
+        <span class="code-lang">C++ / Arduino IDE (ESP-32)</span>
+        <button class="copy-btn" id="copyBtn">Copiar</button>
+      </div>
+      <pre><code class="language-cpp" id="code" set:html={code}></code></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Qué verás en el Monitor Serie</div>
+    <div class="serial">Tilt Ball Switch listo.
+Inclina la placa para mover la bola...
+
+[ NIVELADO ]  la bola cierra el contacto
+[ INCLINADO ] la bola abre el contacto
+[ NIVELADO ]  la bola cierra el contacto
+[ INCLINADO ] la bola abre el contacto</div>
+    <div class="note" style="margin-top:14px;">
+      Inclina la placa lentamente hacia un lado y luego devuélvela a su posición: el mensaje debe
+      alternar cada vez que la bola se mueve. Si no cambia nada, revisa que una pata vaya a
+      <code>GPIO 25</code> y la otra a <code>GND</code>.
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Cómo usar</div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><div class="step-text">Conecta una pata del interruptor de bola a <code>GPIO 25</code> y la otra a <code>GND</code>. No importa el orden.</div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-text">Monta el sensor lo más <strong>vertical</strong> posible: así la bola rueda con claridad al inclinar y evitas lecturas intermedias.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Sube el código y abre el <strong>Monitor Serie a 115200 baudios</strong>.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Inclina la placa de un lado a otro y comprueba que el estado cambia entre <code>NIVELADO</code> e <code>INCLINADO</code>.</div></div>
+    </div>
+    <div class="note">
+      <strong>¿El estado tiembla o parpadea?</strong> Es normal en el punto justo de inclinación: la
+      bola rebota entre los contactos. El <code>delay(50)</code> del código amortigua ese rebote; si
+      lo necesitas más estable, súbelo un poco.<br><br>
+      <strong>¿No detecta nada?</strong> Verifica que el sensor no esté acostado por completo (la bola
+      necesita rodar) y que la pata declarada en <code>PIN_TILT</code> coincida con tu cableado.
+    </div>
+  </section>
+</ProjectLayout>
+
+<style is:global>
+.serial {
+  background: #0a0a10;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #6ee7b7;
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>

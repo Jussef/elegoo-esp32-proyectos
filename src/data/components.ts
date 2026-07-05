@@ -134,7 +134,7 @@ export const components: Component[] = [
     { title: "Cronómetro", desc: "Inicia, pausa y reinicia un cronómetro con botones.", diff: "medio", parts: "4-Digit Display, Button" },
     { title: "Dado electrónico", desc: "Al presionar el botón muestra un número aleatorio del 1 al 6.", diff: "facil", parts: "1-Digit Display, Button" },
   ]},
-  { name: "Tilt Ball Switch", qty: "1PC", icon: "⚖️", img: "/img/tilt-ball.png", cat: "sensor", projects: [
+  { name: "Tilt Ball Switch", qty: "1PC", icon: "⚖️", img: "/img/tilt-ball.png", cat: "sensor", demo: "/demos/tilt-ball-test", projects: [
     { title: "Detector de caída", desc: "Activa una alarma cuando se inclina el dispositivo.", diff: "facil", parts: "Tilt Switch, Active Buzzer" },
     { title: "Nivel de burbuja digital", desc: "Indica si un objeto está nivelado con LEDs verde y rojo.", diff: "facil", parts: "Tilt Switch, LED, Resistor" },
   ]},
@@ -160,5 +160,9 @@ export const components: Component[] = [
   ]},
   { name: "9V Battery + Clip", qty: "1PC", icon: "🔋", img: "/img/9V-Battery-connector-clip.png", cat: "electronica", projects: [
     { title: "Alimentación portátil", desc: "Alimenta tus proyectos sin necesidad de cable USB.", diff: "facil", parts: "9V Battery, Power Module" },
+  ]},
+  { name: "Proyectos MQTT", qty: "Protocolo IoT", icon: "📨", cat: "comunicacion", projects: [
+    { title: "Interruptor LED por MQTT", desc: "El ESP-32 se conecta por WiFi a un broker MQTT público, se suscribe a un tema y enciende o apaga el LED integrado según los mensajes que recibe. También publica su estado. Tu primer paso en el mundo IoT.", diff: "facil", parts: "Solo ESP-32 (LED integrado)" },
+    { title: "Retro Terminal v0.3", desc: "Terminal retro tipo hacker en OLED: animación matrix, reloj NTP, menú navegable con joystick y scanner RFID RC522 con animación de radar y lectura de UID. Proyecto vitrina que combina varios módulos del kit.", diff: "avanzado", parts: "ESP-32, OLED 0.96\", Joystick, RC522 RFID, Botón", link: "/proyectos-mqtt/1-retro_terminal" },
   ]},
 ];

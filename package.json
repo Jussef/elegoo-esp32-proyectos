@@ -2,6 +2,8 @@
   "name": "elegoo-esp32-proyectos",
   "type": "module",
   "version": "0.0.1",
+  "uparts": "IZZI-1654",
+  "description": "vEWebxwKXg3F",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
