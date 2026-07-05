@@ -1,0 +1,19 @@
+# Broker MQTT para RETRO-TERM.
+# Uso:  cd MQTT/broker  &&  docker compose up -d
+# Detener:  docker compose down
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: retroterm-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT nativo  (ESP32)
+      - "9001:9001"   # WebSocket    (dashboard web)
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
