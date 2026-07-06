@@ -7,14 +7,6 @@
  *        cada escaneo RFID y la base de tarjetas (retained)
  *      - recibe comandos: add / delete / rename / wipe /
  *        identify  (ver MQTT/README.md para el contrato)
- *  v0.4:
- *   🔐 CONTROL DE ACCESO RFID
- *      - tarjetas guardadas en NVS (sobreviven reinicio)
- *      - REGISTER CARD  -> da de alta tarjetas (AGENT-01...)
- *      - CARD DATABASE  -> lista y borra tarjetas
- *      - SCANNER ahora distingue GRANTED vs DENIED
- *  v0.3:
- *   📡 RFID SCANNER (RC522) con animación radar
  * ═══════════════════════════════════════════════
  *  Librerías: Adafruit SSD1306, Adafruit GFX,
  *             MFRC522 (miguelbalboa),
@@ -42,7 +34,8 @@ const long GMT_OFFSET_SEC = -6 * 3600;   // CDMX
 const int  DST_OFFSET_SEC = 0;
 
 // ---------- MQTT ----------
-const char* MQTT_HOST = "192.168.1.100"; // IP del broker Mosquitto (homelab)
+const bool  MQTT_ENABLED = true;         // <-- pon en false si NO tienes broker (evita lag)
+const char* MQTT_HOST = "192.168.0.169"; // IP del broker Mosquitto (homelab)
 const int   MQTT_PORT = 1883;
 const char* MQTT_USER = "";              // vacío = broker anónimo
 const char* MQTT_PASS = "";
@@ -83,37 +76,138 @@ Card cards[MAX_CARDS];
 int  cardCount = 0;
 Preferences prefs;
 
-// ---------- ICONOS ----------
+// ---------- ICONOS RETROFUTURISTAS 8x8 ----------
 static const uint8_t PROGMEM ICON_SKULL[] = {
-  0b00111100,
-  0b01111110,
-  0b11011011,
-  0b11111111,
-  0b11100111,
-  0b01111110,
-  0b00101010,
-  0b00000000
+  0b00111100, //     ####    
+  0b01111110, //    ######   
+  0b11011011, //  ## #  # ## 
+  0b11111111, //   ########    
+  0b11100111, //   ###  ###    
+  0b01111110, //    ######    
+  0b00101010, //   # # # #   
+  0b00000000  //            
 };
 
+// Glitch / Error de Red / Cyberware dañado
+static const uint8_t PROGMEM ICON_GLITCH[] = {
+  0b11000011, // ##    ##
+  0b01100110, //  ##  ## 
+  0b00000000, //         
+  0b11111111, // ########
+  0b00000000, //         
+  0b01100110, //  ##  ## 
+  0b11000011, // ##    ##
+  0b00000000  //         
+};
+
+// Disquete / diskette (Estilo 80s / Guardar partida)
+static const uint8_t PROGMEM ICON_FLOPPY[] = {
+  0b01111110, //  ###### 
+  0b01100110, //  ##  ## 
+  0b01111110, //  ###### 
+  0b01111110, //  ###### 
+  0b01000010, //  #    # 
+  0b01011010, //  # ## # 
+  0b01011010, //  # ## # 
+  0b00000000  //         
+};
+
+// Ojo Cibernético / Ojo de corporación (Estilo Blade Runner)
+static const uint8_t PROGMEM ICON_CYBER_EYE[] = {
+  0b00111100, //    ####   
+  0b01000010, //   #    #  
+  0b10011001, //  #  ##  # 
+  0b10111101, //  # ###### 
+  0b10111101, //  # ###### 
+  0b10011001, //  #  ##  # 
+  0b01000010, //   #    #  
+  0b00111100  //    ####   
+};
+
+// Monitor CRT / Terminal Hacker
+static const uint8_t PROGMEM ICON_TERMINAL[] = {
+  0b11111111, // ########
+  0b10000001, // #      #
+  0b10111001, // # ###  #
+  0b10100001, // # #    #
+  0b10000001, // #      #
+  0b11111111, // ########
+  0b00011000, //    ##   
+  0b01111110  //  ###### 
+};
+
+// Pirámide de Corporación Neon / Triángulo Synthwave
+static const uint8_t PROGMEM ICON_CORP_PYRAMID[] = {
+  0b00011000, //    ##   
+  0b00011000, //    ##   
+  0b00111100, //   ####  
+  0b00100100, //   #  #  
+  0b01111110, //  ###### 
+  0b01000010, //  #    # 
+  0b11111111, // ########
+  0b00000000  //         
+};
+
+// Rayo Láser / Energía Synthwave
+static const uint8_t PROGMEM ICON_BOLT[] = {
+  0b00011000, //    ##   
+  0b00110000, //   ##    
+  0b01100000, //  ##     
+  0b01111100, //  #####  
+  0b00011000, //    ##   
+  0b00110000, //   ##    
+  0b01100000, //  ##     
+  0b01000000  //  #      
+};
+
+// Radiación / Contaminación Nuclear
+static const uint8_t PROGMEM ICON_RADIATION[] = {
+  0b01100110, //  ##  ## 
+  0b11100111, // ###  ###
+  0b11100111, // ###  ###
+  0b00011000, //    ##   
+  0b00011000, //    ##   
+  0b00011000, //    ##   
+  0b00111100, //   ####  
+  0b01111110  //  ###### 
+};
+
+
 // ---------- ESTADOS ----------
-enum Screen { SCREEN_HOME, SCREEN_MENU, SCREEN_RFID, SCREEN_REGISTER, SCREEN_CARDDB };
+enum Screen { SCREEN_HOME, SCREEN_MENU, SCREEN_RFID_MENU, SCREEN_IR_MENU, SCREEN_RFID, SCREEN_REGISTER, SCREEN_CARDDB };
 Screen currentScreen = SCREEN_HOME;
 
-// ---------- MENÚ ----------
-const char* menuItems[] = {
-  "RFID SCANNER",
-  "REGISTER CARD",
-  "CARD DATABASE",
-  "IR REMOTE",
-  "IR LEARN",
+// ---------- MENÚS ----------
+// Modelo genérico: el mismo drawMenu/moveMenu sirve para cualquier menú.
+struct Menu {
+  const char** items;
+  int len;
+  int index;
+  int scroll;
+};
+
+const char* mainItems[] = {
+  "RFID SCANNER",     // -> submenú (scan + register + database)
+  "IR CONTROL",       // -> submenú (remote + learn)
   "SYSTEM INFO",
   "SETTINGS",
   "< BACK"
 };
-const int MENU_LEN = sizeof(menuItems) / sizeof(menuItems[0]);
+const char* rfidItems[] = {
+  "SCAN CARD",
+  "REGISTER CARD",
+  "CARD DATABASE",
+  "< BACK"
+};
+const char* irItems[] = {
+  "IR REMOTE",
+  "IR LEARN",
+  "< BACK"
+};
+Menu mainMenu = { mainItems, sizeof(mainItems) / sizeof(mainItems[0]), 0, 0 };
+Menu rfidMenu = { rfidItems, sizeof(rfidItems) / sizeof(rfidItems[0]), 0, 0 };
+Menu irMenu   = { irItems,   sizeof(irItems)   / sizeof(irItems[0]),   0, 0 };
 const int MENU_VISIBLE = 4;
-int menuIndex = 0;
-int menuScroll = 0;
 
 // ---------- RFID SCANNER (estado) ----------
 bool   cardPresent = false;
@@ -171,7 +265,9 @@ void setup() {
   snprintf(topicBase, sizeof(topicBase), "retroterm/%s", DEVICE_ID);
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
-  mqtt.setBufferSize(1600);   // la base de tarjetas (retained) puede ser grande
+  mqtt.setBufferSize(1600);        // la base de tarjetas (retained) puede ser grande
+  mqtt.setSocketTimeout(2);        // no esperar 15s por el CONNACK -> evita el congelamiento
+  netClient.setConnectionTimeout(1500);  // TCP connect máx 1.5s si el broker no responde
 }
 
 // ═══════════════ LOOP ═══════════════
@@ -187,6 +283,8 @@ void loop() {
   switch (currentScreen) {
     case SCREEN_HOME:     drawHome();     break;
     case SCREEN_MENU:     drawMenu();     break;
+    case SCREEN_RFID_MENU: drawMenu();    break;
+    case SCREEN_IR_MENU:  drawMenu();     break;
     case SCREEN_RFID:     rfidLoop();     break;
     case SCREEN_REGISTER: registerLoop(); break;
     case SCREEN_CARDDB:   drawCardDB();   break;
@@ -290,14 +388,18 @@ void handleInput() {
     switch (currentScreen) {
       case SCREEN_HOME:
         currentScreen = SCREEN_MENU;
-        menuIndex = 0;
-        menuScroll = 0;
+        mainMenu.index = 0;
+        mainMenu.scroll = 0;
         break;
       case SCREEN_MENU:
         currentScreen = SCREEN_HOME;
         break;
-      default:                          // desde cualquier submenú -> MENU
+      case SCREEN_RFID_MENU:              // submenús -> menú principal
+      case SCREEN_IR_MENU:
         currentScreen = SCREEN_MENU;
+        break;
+      default:                            // scan/register/db -> submenú RFID
+        currentScreen = SCREEN_RFID_MENU;
         cardPresent = false;
         confirmWipe = false;
         break;
@@ -305,16 +407,17 @@ void handleInput() {
     return;
   }
 
-  // Joystick vertical: navega MENU o CARD DB
-  if (currentScreen == SCREEN_MENU || currentScreen == SCREEN_CARDDB) {
+  // Joystick vertical: navega cualquier menú o la CARD DB
+  if (currentScreen == SCREEN_MENU || currentScreen == SCREEN_RFID_MENU ||
+      currentScreen == SCREEN_IR_MENU || currentScreen == SCREEN_CARDDB) {
     int y = analogRead(PIN_JOY_Y);
     if (millis() - lastJoy > JOY_REPEAT) {
       int dir = 0;
       if (y < 1000)      dir = -1;
       else if (y > 3000) dir = +1;
       if (dir != 0) {
-        if (currentScreen == SCREEN_MENU) moveMenu(dir);
-        else                              moveDB(dir);
+        if (currentScreen == SCREEN_CARDDB) moveDB(dir);
+        else                                moveMenu(dir);
         lastJoy = millis();
       }
     }
@@ -324,7 +427,11 @@ void handleInput() {
   if (sw && millis() - lastBtn > BTN_DEBOUNCE) {
     lastBtn = millis();
     if (currentScreen == SCREEN_MENU) {
-      selectMenuItem();
+      selectMainItem();
+    } else if (currentScreen == SCREEN_RFID_MENU) {
+      selectRfidItem();
+    } else if (currentScreen == SCREEN_IR_MENU) {
+      selectIrItem();
     } else if (currentScreen == SCREEN_CARDDB) {
       if (!confirmWipe) {
         confirmWipe = true;               // primer click: pide confirmación
@@ -338,9 +445,25 @@ void handleInput() {
   }
 }
 
-void selectMenuItem() {
-  switch (menuIndex) {
-    case 0:   // RFID SCANNER
+void selectMainItem() {
+  if (mainMenu.index == 0) {                    // RFID SCANNER -> submenú
+    currentScreen = SCREEN_RFID_MENU;
+    rfidMenu.index = 0;
+    rfidMenu.scroll = 0;
+  } else if (mainMenu.index == 1) {             // IR CONTROL -> submenú
+    currentScreen = SCREEN_IR_MENU;
+    irMenu.index = 0;
+    irMenu.scroll = 0;
+  } else if (mainMenu.index == mainMenu.len - 1) {  // < BACK
+    currentScreen = SCREEN_HOME;
+  } else {                                       // SYSTEM INFO / SETTINGS -> futuro
+    flashSelection();
+  }
+}
+
+void selectRfidItem() {
+  switch (rfidMenu.index) {
+    case 0:   // SCAN CARD
       currentScreen = SCREEN_RFID;
       cardPresent = false;
       lastUID[0] = '\0';
@@ -354,19 +477,33 @@ void selectMenuItem() {
       dbScroll = 0;
       confirmWipe = false;
       break;
-    case MENU_LEN - 1:   // < BACK
-      currentScreen = SCREEN_HOME;
+    case 3:   // < BACK
+      currentScreen = SCREEN_MENU;
       break;
-    default:             // IR / SYSTEM INFO / SETTINGS -> fase futura
+  }
+}
+
+void selectIrItem() {
+  switch (irMenu.index) {
+    case 0:   // IR REMOTE  -> fase futura
       flashSelection();
+      break;
+    case 1:   // IR LEARN   -> fase futura
+      flashSelection();
+      break;
+    case 2:   // < BACK
+      currentScreen = SCREEN_MENU;
       break;
   }
 }
 
 void moveMenu(int dir) {
-  menuIndex = constrain(menuIndex + dir, 0, MENU_LEN - 1);
-  if (menuIndex <  menuScroll)                menuScroll = menuIndex;
-  if (menuIndex >= menuScroll + MENU_VISIBLE) menuScroll = menuIndex - MENU_VISIBLE + 1;
+  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu
+          : (currentScreen == SCREEN_IR_MENU)   ? &irMenu
+          : &mainMenu;
+  m->index = constrain(m->index + dir, 0, m->len - 1);
+  if (m->index <  m->scroll)                m->scroll = m->index;
+  if (m->index >= m->scroll + MENU_VISIBLE) m->scroll = m->index - MENU_VISIBLE + 1;
 }
 
 void moveDB(int dir) {
@@ -674,41 +811,53 @@ void drawHome() {
 }
 
 void drawMenu() {
+  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu
+          : (currentScreen == SCREEN_IR_MENU)   ? &irMenu
+          : &mainMenu;
   display.clearDisplay();
 
   display.fillRect(0, 0, 128, 14, SSD1306_WHITE);
-  display.setTextColor(SSD1306_BLACK);
+  display.setTextColor(SSD1306_BLACK);   // icono/texto en NEGRO sobre la barra blanca
   display.setTextSize(1);
-  display.setCursor(4, 3);
-  display.print(F("== MAIN MENU =="));
+
+  // Título del header. El MAIN MENU usa el icono de diskette en vez del primer "="
+  if (currentScreen == SCREEN_MENU) {
+    display.drawBitmap(3, 3, ICON_TERMINAL, 8, 8, SSD1306_BLACK);
+    display.setCursor(13, 3);
+    display.print(F("MAIN MENU"));
+  } else {
+    display.setCursor(4, 3);
+    display.print(currentScreen == SCREEN_RFID_MENU ? F("RFID SCANNER") : F("= IR CONTROL ="));
+  }
+
   display.setCursor(92, 3);
   display.print("[");
-  display.print(menuIndex + 1);
+  display.print(m->index + 1);
   display.print("/");
-  display.print(MENU_LEN);
+  display.print(m->len);
   display.print("]");
 
   display.setTextColor(SSD1306_WHITE);
   for (int i = 0; i < MENU_VISIBLE; i++) {
-    int idx = menuScroll + i;
-    if (idx >= MENU_LEN) break;
+    int idx = m->scroll + i;
+    if (idx >= m->len) break;
     int yPos = 20 + i * 11;
 
-    if (idx == menuIndex) {
+    if (idx == m->index) {
       display.fillRect(0, yPos - 1, 128, 11, SSD1306_WHITE);
       display.drawBitmap(3, yPos, ICON_SKULL, 8, 8, SSD1306_BLACK);
       display.setTextColor(SSD1306_BLACK);
       display.setCursor(15, yPos);
-      display.print(menuItems[idx]);
+      display.print(m->items[idx]);
       display.setTextColor(SSD1306_WHITE);
     } else {
       display.setCursor(15, yPos);
-      display.print(menuItems[idx]);
+      display.print(m->items[idx]);
     }
   }
 
-  if (menuScroll > 0)                       display.fillTriangle(122, 20, 126, 20, 124, 17, SSD1306_WHITE);
-  if (menuScroll + MENU_VISIBLE < MENU_LEN) display.fillTriangle(122, 60, 126, 60, 124, 63, SSD1306_WHITE);
+  if (m->scroll > 0)                    display.fillTriangle(122, 20, 126, 20, 124, 17, SSD1306_WHITE);
+  if (m->scroll + MENU_VISIBLE < m->len) display.fillTriangle(122, 60, 126, 60, 124, 63, SSD1306_WHITE);
 
   display.display();
 }
@@ -727,17 +876,10 @@ void drawStatusBar() {
     display.print(F("--:--:--"));
   }
 
-  drawBiohazard(74, 7);
+  display.drawBitmap(70, 3, ICON_RADIATION, 8, 8, SSD1306_WHITE);  // icono 8x8 centrado (antes drawBiohazard)
   drawWifiBars(104, 12);
 
   display.drawFastHLine(0, 15, 128, SSD1306_WHITE);
-}
-
-void drawBiohazard(int cx, int cy) {
-  display.drawCircle(cx,     cy - 3, 3, SSD1306_WHITE);
-  display.drawCircle(cx - 3, cy + 2, 3, SSD1306_WHITE);
-  display.drawCircle(cx + 3, cy + 2, 3, SSD1306_WHITE);
-  display.fillCircle(cx, cy, 1, SSD1306_WHITE);
 }
 
 void drawWifiBars(int x, int yBase) {
@@ -845,9 +987,11 @@ void flashSelection() {
 // ═══════════════ MQTT ═══════════════
 const char* screenName(Screen s) {
   switch (s) {
-    case SCREEN_HOME:     return "HOME";
-    case SCREEN_MENU:     return "MENU";
-    case SCREEN_RFID:     return "RFID";
+    case SCREEN_HOME:      return "HOME";
+    case SCREEN_MENU:      return "MENU";
+    case SCREEN_RFID_MENU: return "RFIDMENU";
+    case SCREEN_IR_MENU:   return "IRMENU";
+    case SCREEN_RFID:      return "RFID";
     case SCREEN_REGISTER: return "REGISTER";
     case SCREEN_CARDDB:   return "CARDDB";
   }
@@ -960,28 +1104,36 @@ void mqttCallback(char* topicIn, byte* payload, unsigned int len) {
 }
 
 void mqttConnect() {
+  if (!MQTT_ENABLED) return;
   if (WiFi.status() != WL_CONNECTED) return;
-  if (millis() - lastMqttRetry < 3000) return;   // reintenta cada 3 s (no bloquea)
+  if (millis() - lastMqttRetry < 5000) return;   // reintenta cada 5 s
   lastMqttRetry = millis();
 
   char willT[64]; mqttTopic(willT, sizeof(willT), "status");
   const char* willMsg = "{\"online\":false}";
   String cid = String("retroterm-") + DEVICE_ID;
 
+  Serial.printf("[MQTT] Conectando a %s:%d ... ", MQTT_HOST, MQTT_PORT);
   bool ok = strlen(MQTT_USER)
     ? mqtt.connect(cid.c_str(), MQTT_USER, MQTT_PASS, willT, 0, true, willMsg)
     : mqtt.connect(cid.c_str(), NULL, NULL,           willT, 0, true, willMsg);
 
   if (ok) {
+    Serial.println("OK");
     char subT[64]; mqttTopic(subT, sizeof(subT), "cmd/#");
     mqtt.subscribe(subT);
     publishStatus(true);
     publishDB();
     lastTelemetry = 0;            // fuerza telemetría inmediata
+  } else {
+    // state() -2 = no llegó al broker (IP mal / firewall / broker apagado)
+    //         -4 = timeout   5 = credenciales rechazadas
+    Serial.printf("FALLO (state=%d)\n", mqtt.state());
   }
 }
 
 void mqttLoop() {
+  if (!MQTT_ENABLED) return;
   if (!mqtt.connected()) { mqttConnect(); return; }
   mqtt.loop();
   if (dbDirty) { publishDB(); dbDirty = false; }

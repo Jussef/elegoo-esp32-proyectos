@@ -16,6 +16,80 @@ de abajo.
 
 ---
 
+## 🚀 Guía de inicio (haz esto en orden)
+
+### Qué necesitas
+- **Node + yarn** en la PC (ya lo tienes).
+- **Arduino IDE** con las librerías: `PubSubClient`, `ArduinoJson` (v7),
+  `Adafruit SSD1306`, `Adafruit GFX`, `MFRC522`.
+- ESP32, OLED, joystick, botón y RC522 conectados como en el `.ino`.
+- La PC y el ESP32 en la **misma red Wi-Fi**.
+
+### Pasos
+
+**1. Averigua la IP de tu PC** (es donde corre el broker):
+```powershell
+ipconfig    # busca la "IPv4" de tu Wi-Fi, p.ej. 192.168.0.169
+```
+> ⚠️ Ignora la de VirtualBox (`192.168.56.x`). Usa la de tu Wi-Fi real.
+
+**2. Arranca el broker** (en una terminal, déjalo abierto):
+```bash
+cd MQTT
+yarn install      # solo la primera vez
+yarn broker       # MQTT en 1883 (ESP32) y 9001 (dashboard)
+```
+
+**3. Abre los puertos en el Firewall de Windows** ⭐ *(el paso que casi todos olvidan)*
+
+Windows bloquea las conexiones entrantes en redes **Públicas**, así que el ESP32
+no puede llegar al broker aunque esté corriendo. Abre **PowerShell como
+Administrador** (clic derecho → "Ejecutar como administrador") y pega:
+```powershell
+New-NetFirewallRule -DisplayName "MQTT 1883" -Direction Inbound -Protocol TCP -LocalPort 1883 -Action Allow
+New-NetFirewallRule -DisplayName "MQTT WS 9001" -Direction Inbound -Protocol TCP -LocalPort 9001 -Action Allow
+```
+*(Alternativa: marca tu Wi-Fi como red "Privada" en Ajustes de Windows. Esto es
+de una sola vez.)*
+
+**4. Configura y flashea el ESP32.** En `src/arduino/retro_terminal_esp32.ino`:
+```cpp
+const char* WIFI_SSID = "tu_wifi";
+const char* WIFI_PASS = "tu_password";
+const char* MQTT_HOST = "192.168.0.169";  // <- la IP de tu PC del paso 1
+```
+Abre el **Monitor Serie** (115200 baud). Debe decir:
+```
+[MQTT] Conectando a 192.168.0.169:1883 ... OK
+```
+Si dice `FALLO (state=-2)` → no llega al broker: revisa el paso 3 (firewall),
+que la IP sea la correcta y que `yarn broker` siga corriendo.
+
+**5. Configura y arranca el dashboard** (otra terminal):
+```bash
+cd MQTT
+# .env: si abres el dashboard en la MISMA PC del broker, usa localhost:
+#   VITE_MQTT_HOST=localhost
+# si lo abres desde otro dispositivo, pon la IP de la PC (paso 1).
+yarn dev          # http://localhost:5173
+```
+
+Al abrir la web deberías ver **ONLINE**, el reloj, la señal Wi-Fi y, al acercar
+una tarjeta, aparece en el SCAN LOG. ✅
+
+### ¿Sigue sin moverse? Diagnóstico exprés
+```powershell
+# ¿El broker escucha?  (deben salir 1883 y 9001 LISTENING)
+netstat -ano | findstr "1883 9001"
+# ¿El ESP32 está conectado?  (debe salir una linea ...:1883  ESTABLISHED)
+netstat -ano | findstr 1883
+```
+- Broker escucha pero **no hay ESTABLISHED en 1883** → firewall / IP del `.ino`.
+- El Monitor Serie no dice nada de `[MQTT]` → el ESP32 no pasó del Wi-Fi
+  (revisa SSID/PASS) o `MQTT_ENABLED` está en `false`.
+
+---
+
 ## 1. Contrato de topics
 
 Base: **`retroterm/<DEVICE_ID>`** — por defecto `retroterm/term01`.
