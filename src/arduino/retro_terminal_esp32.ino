@@ -1,17 +1,27 @@
 /*
  * ═══════════════════════════════════════════════
- *  RETRO TERMINAL v0.5 — ESP32 + OLED 0.96"
- *  NUEVO en v0.5:
- *   📡 MQTT — se conecta a un broker (Mosquitto) y:
- *      - publica status (retained+LWT), telemetría (5s),
- *        cada escaneo RFID y la base de tarjetas (retained)
- *      - recibe comandos: add / delete / rename / wipe /
- *        identify  (ver MQTT/README.md para el contrato)
+ *  RETRO TERMINAL v0.7 — ESP32 + OLED 0.96"  ·  DEV STREAM DECK
+ *  NUEVO en v0.7:
+ *   🎛️ MACROS — stream deck para dev/homelab:
+ *      - el menú MACROS se autoconfigura por MQTT (topic
+ *        macros/config retenido), sin reflashear.
+ *      - al hacer click publica macro/fire; un "agente"
+ *        Node en el homelab ejecuta la acción (salud del
+ *        homelab, reiniciar contenedor Docker, ...) y
+ *        devuelve el resultado en macro/result.
+ *   (Se retiró el EMISOR IR. El RECEPTOR IR queda listo
+ *    para la Fase 2: usar un control remoto como hotkeys.)
+ *  v0.5:
+ *   📡 MQTT — status (retained+LWT), telemetría (5s),
+ *      escaneos RFID y base de tarjetas (retained);
+ *      recibe cmd/# (ver MQTT/README.md para el contrato).
  * ═══════════════════════════════════════════════
  *  Librerías: Adafruit SSD1306, Adafruit GFX,
  *             MFRC522 (miguelbalboa),
- *             PubSubClient (knolleary), ArduinoJson (v7)
+ *             PubSubClient (knolleary), ArduinoJson (v7),
+ *             IRremote (Armin Joachimsmeyer, v4.x)
  *  Cableado RC522: SS=5 SCK=18 MOSI=23 MISO=19 RST=17 (3.3V!)
+ *  Cableado IR:  RECEPTOR Y->GPIO16  R->3.3V  G->GND  (sin emisor)
  * ═══════════════════════════════════════════════
  */
 
@@ -25,10 +35,12 @@
 #include <Adafruit_SSD1306.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <IRremote.hpp>          // v4.x — solo IrReceiver (emisor retirado; Fase 2)
+#include "secrets.h"             // credenciales reales (NO se sube a GitHub; ver secrets.example.h)
 
 // ---------- CONFIG ----------
-const char* WIFI_SSID = "TU_SSID";
-const char* WIFI_PASS = "TU_PASSWORD";
+const char* WIFI_SSID = SECRET_WIFI_SSID;
+const char* WIFI_PASS = SECRET_WIFI_PASS;
 
 const long GMT_OFFSET_SEC = -6 * 3600;   // CDMX
 const int  DST_OFFSET_SEC = 0;
@@ -37,8 +49,8 @@ const int  DST_OFFSET_SEC = 0;
 const bool  MQTT_ENABLED = true;         // <-- pon en false si NO tienes broker (evita lag)
 const char* MQTT_HOST = "192.168.0.169"; // IP del broker Mosquitto (homelab)
 const int   MQTT_PORT = 1883;
-const char* MQTT_USER = "";              // vacío = broker anónimo
-const char* MQTT_PASS = "";
+const char* MQTT_USER = SECRET_MQTT_USER; // vacío = broker anónimo
+const char* MQTT_PASS = SECRET_MQTT_PASS;
 const char* DEVICE_ID = "term01";        // identifica esta terminal en los topics
 
 // ---------- PINES ----------
@@ -48,6 +60,7 @@ const char* DEVICE_ID = "term01";        // identifica esta terminal en los topi
 #define PIN_JOY_SW    32
 #define PIN_RFID_SS   5
 #define PIN_RFID_RST  17
+#define PIN_IR_RECV   16         // pin Y del RECEPTOR IR (Fase 2: control como hotkeys)
 
 // ---------- OLED ----------
 #define SCREEN_W 128
@@ -75,6 +88,17 @@ struct Card {
 Card cards[MAX_CARDS];
 int  cardCount = 0;
 Preferences prefs;
+
+// ---------- MACROS (stream deck) ----------
+// La lista la envía el agente por MQTT (macros/config, retenido). No se guarda
+// en NVS: al arrancar, el broker reentrega el retenido y se repuebla sola.
+#define MAX_MACROS 16
+struct Macro {
+  char id[24];      // identificador que se publica en macro/fire
+  char label[18];   // texto que se ve en el OLED
+};
+Macro macros[MAX_MACROS];
+int   macroCount = 0;
 
 // ---------- ICONOS RETROFUTURISTAS 8x8 ----------
 static const uint8_t PROGMEM ICON_SKULL[] = {
@@ -174,7 +198,7 @@ static const uint8_t PROGMEM ICON_RADIATION[] = {
 
 
 // ---------- ESTADOS ----------
-enum Screen { SCREEN_HOME, SCREEN_MENU, SCREEN_RFID_MENU, SCREEN_IR_MENU, SCREEN_RFID, SCREEN_REGISTER, SCREEN_CARDDB };
+enum Screen { SCREEN_HOME, SCREEN_MENU, SCREEN_RFID_MENU, SCREEN_RFID, SCREEN_REGISTER, SCREEN_CARDDB, SCREEN_MACROS };
 Screen currentScreen = SCREEN_HOME;
 
 // ---------- MENÚS ----------
@@ -188,7 +212,7 @@ struct Menu {
 
 const char* mainItems[] = {
   "RFID SCANNER",     // -> submenú (scan + register + database)
-  "IR CONTROL",       // -> submenú (remote + learn)
+  "MACROS",           // -> stream deck (lista recibida por MQTT)
   "SYSTEM INFO",
   "SETTINGS",
   "< BACK"
@@ -199,14 +223,8 @@ const char* rfidItems[] = {
   "CARD DATABASE",
   "< BACK"
 };
-const char* irItems[] = {
-  "IR REMOTE",
-  "IR LEARN",
-  "< BACK"
-};
 Menu mainMenu = { mainItems, sizeof(mainItems) / sizeof(mainItems[0]), 0, 0 };
 Menu rfidMenu = { rfidItems, sizeof(rfidItems) / sizeof(rfidItems[0]), 0, 0 };
-Menu irMenu   = { irItems,   sizeof(irItems)   / sizeof(irItems[0]),   0, 0 };
 const int MENU_VISIBLE = 4;
 
 // ---------- RFID SCANNER (estado) ----------
@@ -225,6 +243,15 @@ unsigned long regShownAt = 0;
 int    dbScroll = 0;
 const int DB_VISIBLE = 4;
 bool   confirmWipe = false;
+
+// ---------- MACROS (estado) ----------
+int    macroIndex = 0, macroScroll = 0;   // navegación de la lista
+const int MACRO_VISIBLE = 4;
+int    macroFiredIdx = -1;                 // índice disparado (para el flash)
+unsigned long macroFiredAt = 0;
+char   macroMsg[20] = "";                  // resultado que devuelve el agente
+bool   macroOk = false;
+unsigned long macroMsgAt = 0;
 
 // ---------- INPUT ----------
 unsigned long lastBtn = 0, lastJoy = 0;
@@ -256,6 +283,9 @@ void setup() {
   loadCards();
   Serial.printf("Tarjetas registradas: %d\n", cardCount);
 
+  // ---- IR receptor (listo para Fase 2: control remoto como hotkeys) ----
+  IrReceiver.begin(PIN_IR_RECV, DISABLE_LED_FEEDBACK);
+
   randomSeed(esp_random());
   bootAnimation();
   connectWiFi();
@@ -284,10 +314,10 @@ void loop() {
     case SCREEN_HOME:     drawHome();     break;
     case SCREEN_MENU:     drawMenu();     break;
     case SCREEN_RFID_MENU: drawMenu();    break;
-    case SCREEN_IR_MENU:  drawMenu();     break;
     case SCREEN_RFID:     rfidLoop();     break;
     case SCREEN_REGISTER: registerLoop(); break;
     case SCREEN_CARDDB:   drawCardDB();   break;
+    case SCREEN_MACROS:   drawMacros();   break;
   }
 
   delay(30);
@@ -377,6 +407,30 @@ void wipeCards() {
   dbDirty = true;
 }
 
+// ═══════════════ MACROS (stream deck) ═══════════════
+// Dispara la macro idx: publica su id en macro/fire. El agente del homelab la
+// ejecuta y responde por macro/result (lo pinta drawMacros).
+void fireMacro(int idx) {
+  if (idx < 0 || idx >= macroCount) return;
+  if (!mqtt.connected()) {
+    strncpy(macroMsg, "NO MQTT", sizeof(macroMsg) - 1);
+    macroOk = false; macroMsgAt = millis();
+    return;
+  }
+  char t[64]; mqttTopic(t, sizeof(t), "macro/fire");
+  JsonDocument doc;
+  doc["id"]  = macros[idx].id;
+  doc["src"] = "menu";
+  char buf[96]; serializeJson(doc, buf, sizeof(buf));
+  mqtt.publish(t, buf);
+
+  macroFiredIdx = idx;
+  macroFiredAt  = millis();
+  strncpy(macroMsg, "...", sizeof(macroMsg) - 1);   // esperando respuesta del agente
+  macroOk = true; macroMsgAt = millis();
+  Serial.printf("MACRO FIRE: %s\n", macros[idx].id);
+}
+
 // ═══════════════ INPUT ═══════════════
 void handleInput() {
   bool btn = (digitalRead(PIN_BTN_MENU) == LOW);
@@ -394,8 +448,8 @@ void handleInput() {
       case SCREEN_MENU:
         currentScreen = SCREEN_HOME;
         break;
-      case SCREEN_RFID_MENU:              // submenús -> menú principal
-      case SCREEN_IR_MENU:
+      case SCREEN_RFID_MENU:              // submenú RFID -> menú principal
+      case SCREEN_MACROS:                 // stream deck   -> menú principal
         currentScreen = SCREEN_MENU;
         break;
       default:                            // scan/register/db -> submenú RFID
@@ -407,17 +461,18 @@ void handleInput() {
     return;
   }
 
-  // Joystick vertical: navega cualquier menú o la CARD DB
+  // Joystick vertical: navega cualquier menú, la CARD DB o la lista de MACROS
   if (currentScreen == SCREEN_MENU || currentScreen == SCREEN_RFID_MENU ||
-      currentScreen == SCREEN_IR_MENU || currentScreen == SCREEN_CARDDB) {
+      currentScreen == SCREEN_CARDDB || currentScreen == SCREEN_MACROS) {
     int y = analogRead(PIN_JOY_Y);
     if (millis() - lastJoy > JOY_REPEAT) {
       int dir = 0;
       if (y < 1000)      dir = -1;
       else if (y > 3000) dir = +1;
       if (dir != 0) {
-        if (currentScreen == SCREEN_CARDDB) moveDB(dir);
-        else                                moveMenu(dir);
+        if      (currentScreen == SCREEN_CARDDB) moveDB(dir);
+        else if (currentScreen == SCREEN_MACROS) moveMacros(dir);
+        else                                     moveMenu(dir);
         lastJoy = millis();
       }
     }
@@ -430,8 +485,11 @@ void handleInput() {
       selectMainItem();
     } else if (currentScreen == SCREEN_RFID_MENU) {
       selectRfidItem();
-    } else if (currentScreen == SCREEN_IR_MENU) {
-      selectIrItem();
+    } else if (currentScreen == SCREEN_MACROS) {
+      if (macroCount > 0) {               // click = dispara la macro resaltada
+        fireMacro(macroIndex);
+        flashSelection();
+      }
     } else if (currentScreen == SCREEN_CARDDB) {
       if (!confirmWipe) {
         confirmWipe = true;               // primer click: pide confirmación
@@ -450,10 +508,12 @@ void selectMainItem() {
     currentScreen = SCREEN_RFID_MENU;
     rfidMenu.index = 0;
     rfidMenu.scroll = 0;
-  } else if (mainMenu.index == 1) {             // IR CONTROL -> submenú
-    currentScreen = SCREEN_IR_MENU;
-    irMenu.index = 0;
-    irMenu.scroll = 0;
+  } else if (mainMenu.index == 1) {             // MACROS -> stream deck
+    currentScreen = SCREEN_MACROS;
+    macroIndex = 0;
+    macroScroll = 0;
+    macroFiredIdx = -1;
+    macroMsg[0] = '\0';
   } else if (mainMenu.index == mainMenu.len - 1) {  // < BACK
     currentScreen = SCREEN_HOME;
   } else {                                       // SYSTEM INFO / SETTINGS -> futuro
@@ -483,24 +543,8 @@ void selectRfidItem() {
   }
 }
 
-void selectIrItem() {
-  switch (irMenu.index) {
-    case 0:   // IR REMOTE  -> fase futura
-      flashSelection();
-      break;
-    case 1:   // IR LEARN   -> fase futura
-      flashSelection();
-      break;
-    case 2:   // < BACK
-      currentScreen = SCREEN_MENU;
-      break;
-  }
-}
-
 void moveMenu(int dir) {
-  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu
-          : (currentScreen == SCREEN_IR_MENU)   ? &irMenu
-          : &mainMenu;
+  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu : &mainMenu;
   m->index = constrain(m->index + dir, 0, m->len - 1);
   if (m->index <  m->scroll)                m->scroll = m->index;
   if (m->index >= m->scroll + MENU_VISIBLE) m->scroll = m->index - MENU_VISIBLE + 1;
@@ -511,6 +555,13 @@ void moveDB(int dir) {
   int maxScroll = (cardCount > DB_VISIBLE) ? cardCount - DB_VISIBLE : 0;
   dbScroll = constrain(dbScroll + dir, 0, maxScroll);
   confirmWipe = false;
+}
+
+void moveMacros(int dir) {
+  if (macroCount == 0) return;
+  macroIndex = constrain(macroIndex + dir, 0, macroCount - 1);
+  if (macroIndex <  macroScroll)                 macroScroll = macroIndex;
+  if (macroIndex >= macroScroll + MACRO_VISIBLE) macroScroll = macroIndex - MACRO_VISIBLE + 1;
 }
 
 // ═══════════════ LECTURA COMÚN DE TARJETA ═══════════════
@@ -579,6 +630,68 @@ void registerLoop() {
 
   if (regResult == 0) drawRegisterPrompt();
   else                drawRegisterResult();
+}
+
+// ═══════════════ PANTALLAS MACROS ═══════════════
+void drawMacros() {
+  display.clearDisplay();
+
+  display.fillRect(0, 0, 128, 14, SSD1306_WHITE);
+  display.setTextColor(SSD1306_BLACK);
+  display.setTextSize(1);
+  display.setCursor(4, 3);
+  display.print(F("[ MACROS ]"));
+  if (macroCount > 0) {
+    display.setCursor(92, 3);
+    display.print("[");
+    display.print(macroIndex + 1);
+    display.print("/");
+    display.print(macroCount);
+    display.print("]");
+  }
+
+  display.setTextColor(SSD1306_WHITE);
+
+  if (macroCount == 0) {
+    display.setCursor(10, 26);
+    display.print(F("SIN MACROS"));
+    display.setCursor(4, 42);
+    display.print(mqtt.connected() ? F("ESPERANDO AGENTE..") : F("SIN CONEXION MQTT"));
+    display.display();
+    return;
+  }
+
+  // Si hay un resultado reciente del agente, se reserva la última fila para él
+  bool showMsg = (macroMsg[0] && millis() - macroMsgAt < 3000);
+  int rows = showMsg ? 3 : MACRO_VISIBLE;
+
+  for (int i = 0; i < rows; i++) {
+    int idx = macroScroll + i;
+    if (idx >= macroCount) break;
+    int yPos = 18 + i * 11;
+    bool sel = (idx == macroIndex);
+    if (sel) {
+      display.fillRect(0, yPos - 1, 128, 11, SSD1306_WHITE);
+      display.setTextColor(SSD1306_BLACK);
+    }
+    display.setCursor(3, yPos);
+    display.print(macros[idx].label);
+    if (sel) display.setTextColor(SSD1306_WHITE);
+  }
+
+  if (showMsg) {                           // franja de resultado (>> ok / !! error)
+    display.fillRect(0, 53, 128, 11, SSD1306_WHITE);
+    display.setTextColor(SSD1306_BLACK);
+    display.setCursor(3, 55);
+    display.print(macroOk ? F(">> ") : F("!! "));
+    display.print(macroMsg);
+    display.setTextColor(SSD1306_WHITE);
+  } else {
+    if (macroScroll > 0)                          display.fillTriangle(122, 18, 126, 18, 124, 15, SSD1306_WHITE);
+    if (macroScroll + MACRO_VISIBLE < macroCount) display.fillTriangle(122, 60, 126, 60, 124, 63, SSD1306_WHITE);
+  }
+
+  display.display();
 }
 
 // ═══════════════ PANTALLAS RFID ═══════════════
@@ -811,9 +924,7 @@ void drawHome() {
 }
 
 void drawMenu() {
-  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu
-          : (currentScreen == SCREEN_IR_MENU)   ? &irMenu
-          : &mainMenu;
+  Menu* m = (currentScreen == SCREEN_RFID_MENU) ? &rfidMenu : &mainMenu;
   display.clearDisplay();
 
   display.fillRect(0, 0, 128, 14, SSD1306_WHITE);
@@ -827,7 +938,7 @@ void drawMenu() {
     display.print(F("MAIN MENU"));
   } else {
     display.setCursor(4, 3);
-    display.print(currentScreen == SCREEN_RFID_MENU ? F("RFID SCANNER") : F("= IR CONTROL ="));
+    display.print(F("RFID SCANNER"));
   }
 
   display.setCursor(92, 3);
@@ -990,10 +1101,10 @@ const char* screenName(Screen s) {
     case SCREEN_HOME:      return "HOME";
     case SCREEN_MENU:      return "MENU";
     case SCREEN_RFID_MENU: return "RFIDMENU";
-    case SCREEN_IR_MENU:   return "IRMENU";
     case SCREEN_RFID:      return "RFID";
     case SCREEN_REGISTER: return "REGISTER";
     case SCREEN_CARDDB:   return "CARDDB";
+    case SCREEN_MACROS:   return "MACROS";
   }
   return "?";
 }
@@ -1030,6 +1141,7 @@ void publishTelemetry() {
   doc["ip"]     = WiFi.localIP().toString();
   doc["heap"]   = (uint32_t)ESP.getFreeHeap();
   doc["cards"]  = cardCount;
+  doc["macros"] = macroCount;
   doc["uptime"] = (uint32_t)(millis() / 1000);
   doc["screen"] = screenName(currentScreen);
   struct tm tm;
@@ -1069,7 +1181,36 @@ void publishDB() {
   mqtt.publish(t, buf, true);      // retained
 }
 
-// comandos entrantes: retroterm/term01/cmd/#
+// macros/config (retenido): {"macros":[{"id":"...","label":"..."}]}
+void parseMacrosConfig(JsonDocument& doc) {
+  JsonArray arr = doc["macros"].as<JsonArray>();
+  macroCount = 0;
+  for (JsonObject o : arr) {
+    if (macroCount >= MAX_MACROS) break;
+    const char* id  = o["id"]    | "";
+    const char* lbl = o["label"] | id;
+    if (!id[0]) continue;
+    strncpy(macros[macroCount].id,    id,  sizeof(macros[macroCount].id) - 1);
+    macros[macroCount].id[sizeof(macros[macroCount].id) - 1] = '\0';
+    strncpy(macros[macroCount].label, lbl, sizeof(macros[macroCount].label) - 1);
+    macros[macroCount].label[sizeof(macros[macroCount].label) - 1] = '\0';
+    macroCount++;
+  }
+  if (macroIndex >= macroCount) macroIndex = macroCount > 0 ? macroCount - 1 : 0;
+  if (macroScroll > macroIndex) macroScroll = 0;
+  Serial.printf("[MACROS] config recibida: %d macros\n", macroCount);
+}
+
+// macro/result: {"id":"...","ok":true,"msg":"QUEUED"}
+void parseMacroResult(JsonDocument& doc) {
+  macroOk = doc["ok"] | false;
+  const char* m = doc["msg"] | (macroOk ? "OK" : "ERR");
+  strncpy(macroMsg, m, sizeof(macroMsg) - 1);
+  macroMsg[sizeof(macroMsg) - 1] = '\0';
+  macroMsgAt = millis();
+}
+
+// comandos entrantes: retroterm/term01/cmd/#  +  macros/config  +  macro/result
 void mqttCallback(char* topicIn, byte* payload, unsigned int len) {
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, payload, len);
@@ -1090,6 +1231,12 @@ void mqttCallback(char* topicIn, byte* payload, unsigned int len) {
     return;
   }
   if (err) return;                          // el resto sí necesita JSON válido
+
+  char macCfgT[64], macResT[64];
+  mqttTopic(macCfgT, sizeof(macCfgT), "macros/config");
+  mqttTopic(macResT, sizeof(macResT), "macro/result");
+  if (!strcmp(topicIn, macCfgT)) { parseMacrosConfig(doc); return; }
+  if (!strcmp(topicIn, macResT)) { parseMacroResult(doc);  return; }
 
   const char* uid  = doc["uid"]  | "";
   const char* name = doc["name"] | "";
@@ -1122,6 +1269,8 @@ void mqttConnect() {
     Serial.println("OK");
     char subT[64]; mqttTopic(subT, sizeof(subT), "cmd/#");
     mqtt.subscribe(subT);
+    char m1[64]; mqttTopic(m1, sizeof(m1), "macros/config"); mqtt.subscribe(m1);  // lista (retenida)
+    char m2[64]; mqttTopic(m2, sizeof(m2), "macro/result");  mqtt.subscribe(m2);  // resultados
     publishStatus(true);
     publishDB();
     lastTelemetry = 0;            // fuerza telemetría inmediata

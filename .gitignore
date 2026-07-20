@@ -144,3 +144,7 @@ vite.config.ts.timestamp-*
 
 # Claude files
 .claude/
+
+# Arduino — credenciales reales (NO subir). La plantilla secrets.example.h SÍ se sube.
+secrets.h
+**/secrets.h

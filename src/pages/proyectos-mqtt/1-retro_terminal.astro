@@ -2,19 +2,22 @@
 import ProjectLayout from '../../layouts/ProjectLayout.astro';
 import codeRaw from '../../arduino/retro_terminal_esp32.ino?raw';
 ---
-<ProjectLayout title="Retro Terminal v0.3 — ESP32 + OLED" label="PROYECTO ESPECIAL" pageName="Retro Terminal">
+<ProjectLayout title="Retro Terminal v0.6 — ESP32 + OLED" label="PROYECTO ESPECIAL" pageName="Retro Terminal">
   <section class="section">
     <div class="section-label">Descripción</div>
     <div class="meta">
       <span class="badge avanzado">Avanzado</span>
-      <span class="cat-tag">OLED · RFID · WiFi · Showcase</span>
+      <span class="cat-tag">OLED · RFID · IR · MQTT · WiFi · Showcase</span>
     </div>
     <p class="desc">
       Una terminal retro tipo "hacker" corriendo en el ESP-32 con pantalla OLED de 0.96". Arranca con una
       animación <em>matrix rain</em>, muestra una pantalla HOME con reloj sincronizado por NTP, IP y estado
       de WiFi, y un menú navegable con joystick. Incluye un <strong>scanner RFID RC522</strong> funcional con
-      animación de barrido tipo radar que lee el UID de las tarjetas y muestra "ACCESS GRANTED". Es un
-      proyecto vitrina que combina varios módulos del kit en una sola interfaz.
+      animación de barrido tipo radar que lee el UID de las tarjetas y muestra "ACCESS GRANTED", más una
+      base de datos de tarjetas persistente. En <strong>v0.5</strong> se integró <strong>MQTT</strong>
+      (publica status, telemetría y escaneos, y recibe comandos desde un broker Mosquitto) y en
+      <strong>v0.6</strong> un <strong>mando IR aprendible</strong>: captura los códigos de cualquier control
+      remoto y los retransmite. Es un proyecto vitrina que combina varios módulos del kit en una sola interfaz.
     </p>
   </section>
 
@@ -26,6 +29,8 @@ import codeRaw from '../../arduino/retro_terminal_esp32.ino?raw';
       <div class="comp-item"><div class="cdot"></div><span class="cname">Joystick Module</span><span class="cqty">1 PC</span></div>
       <div class="comp-item"><div class="cdot"></div><span class="cname">RC522 RFID Module + tarjeta/llavero</span><span class="cqty">1 PC</span></div>
       <div class="comp-item"><div class="cdot"></div><span class="cname">Botón (menú)</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Receptor IR (vidrio negro) + control remoto</span><span class="cqty">1 PC</span></div>
+      <div class="comp-item"><div class="cdot"></div><span class="cname">Emisor IR (LED)</span><span class="cqty">1 PC</span></div>
     </div>
   </section>
 
@@ -38,9 +43,42 @@ import codeRaw from '../../arduino/retro_terminal_esp32.ino?raw';
         <tr><td>Joystick</td><td>VRx / VRy / SW</td><td><span class="pin">34</span> / <span class="pin">35</span> / <span class="pin">32</span></td></tr>
         <tr><td>Botón menú</td><td>a GND</td><td><span class="pin">4</span> (INPUT_PULLUP)</td></tr>
         <tr><td>RC522</td><td>SS / SCK / MOSI / MISO / RST</td><td><span class="pin">5</span> / <span class="pin">18</span> / <span class="pin">23</span> / <span class="pin">19</span> / <span class="pin">17</span></td></tr>
+        <tr><td>Receptor IR</td><td>Y / R / G</td><td><span class="pin">16</span> / 3.3V / GND</td></tr>
+        <tr><td>Emisor IR</td><td>S / − (medio libre)</td><td><span class="pin">25</span> / GND</td></tr>
       </tbody>
     </table>
     <div class="note"><strong>Importante:</strong> el RC522 se alimenta a <strong>3.3V</strong>, nunca a 5V. Antes de subir el código cambia el SSID y la contraseña del WiFi en la sección CONFIG.</div>
+    <div class="note"><strong>Ojo con los pines IR:</strong> a diferencia del demo IR (que usa 23 y 4), aquí el emisor va a <strong>GPIO 25</strong> y el receptor a <strong>GPIO 16</strong>, porque el 23 ya lo ocupa el RFID (MOSI) y el 4 el botón de menú. Necesitas la librería <strong>"IRremote"</strong> (v4.x) instalada. Si no vas a usar MQTT, pon <code>MQTT_ENABLED = false</code> en CONFIG.</div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Librerías requeridas</div>
+    <p class="code-intro">
+      Instálalas desde el Arduino IDE en <strong>Herramientas → Administrar librerías…</strong> (Library
+      Manager). Busca por el nombre y usa el autor indicado para no confundirlas con otras del mismo tema.
+    </p>
+    <table>
+      <thead><tr><th>Librería (buscar así)</th><th>Autor</th><th>Para qué</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Adafruit SSD1306</strong></td><td>Adafruit</td><td>Pantalla OLED 0.96" I2C</td></tr>
+        <tr><td><strong>Adafruit GFX Library</strong></td><td>Adafruit</td><td>Base gráfica del OLED</td></tr>
+        <tr><td><strong>Adafruit BusIO</strong></td><td>Adafruit</td><td>Dependencia de las Adafruit (se instala sola)</td></tr>
+        <tr><td><strong>MFRC522</strong></td><td>miguelbalboa</td><td>Lector RFID RC522</td></tr>
+        <tr><td><strong>PubSubClient</strong></td><td>Nick O'Leary (knolleary)</td><td>Cliente MQTT</td></tr>
+        <tr><td><strong>ArduinoJson</strong></td><td>Benoit Blanchon</td><td>Arma/parsea el JSON de MQTT (v7)</td></tr>
+        <tr><td><strong>IRremote</strong></td><td>Armin Joachimsmeyer</td><td>Emisor + receptor IR (v4.x)</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      Al aceptar instalar <strong>Adafruit SSD1306</strong>, el IDE te ofrecerá instalar también
+      <strong>Adafruit GFX</strong> y <strong>Adafruit BusIO</strong> como dependencias: acepta todas.
+      <code>WiFi</code>, <code>Wire</code>, <code>SPI</code>, <code>Preferences</code> y <code>time.h</code>
+      ya vienen dentro del <strong>core ESP32</strong>, no se instalan aparte.
+    </div>
+    <div class="note">
+      <strong>Requisito previo:</strong> tener instalado el <strong>core de ESP32</strong> (Espressif Systems)
+      en <em>Gestor de Tarjetas</em> y seleccionar tu placa (p. ej. <code>ESP32 Dev Module</code>) antes de compilar.
+    </div>
   </section>
 
   <section class="section">
@@ -48,15 +86,17 @@ import codeRaw from '../../arduino/retro_terminal_esp32.ino?raw';
     <div class="steps">
       <div class="step"><div class="step-n">1</div><div class="step-text">En la pantalla HOME, presiona el <strong>botón</strong> (GPIO 4) para entrar al MENÚ.</div></div>
       <div class="step"><div class="step-n">2</div><div class="step-text">Mueve el <strong>joystick</strong> arriba/abajo para navegar y presiona el <strong>click del joystick</strong> (GPIO 32) para seleccionar.</div></div>
-      <div class="step"><div class="step-n">3</div><div class="step-text">Elige <code>RFID SCANNER</code> y acerca una tarjeta: verás la animación de radar y luego el UID con "ACCESS GRANTED".</div></div>
-      <div class="step"><div class="step-n">4</div><div class="step-text">El botón físico te regresa al menú o a HOME desde cualquier pantalla.</div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-text">Elige <code>RFID SCANNER</code> y acerca una tarjeta: verás la animación de radar y luego el UID con "ACCESS GRANTED". El submenú también permite registrar tarjetas y ver la base de datos.</div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-text">Elige <code>IR CONTROL</code> → <code>IR LEARN</code>, apunta un control remoto y pulsa un botón: la terminal guarda ese código (protocolo, address y command).</div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-text">En <code>IR CONTROL</code> → <code>IR REMOTE</code> navegas la lista de códigos aprendidos y con el <strong>click del joystick</strong> los retransmites por el emisor IR (verás <code>SENT</code>).</div></div>
+      <div class="step"><div class="step-n">6</div><div class="step-text">El botón físico te regresa al menú o a HOME desde cualquier pantalla.</div></div>
     </div>
   </section>
 
   <section class="section">
     <div class="section-label">Código Arduino</div>
     <p class="code-intro">
-      El sketch completo (v0.3) está en el repositorio. Puedes verlo aquí mismo en una ventana
+      El sketch completo (v0.6) está en el repositorio. Puedes verlo aquí mismo en una ventana
       o descargar el archivo <span class="inline-file">retro_terminal_esp32.ino</span> listo para
       abrir en el Arduino IDE.
     </p>
