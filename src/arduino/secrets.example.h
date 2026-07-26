@@ -14,3 +14,6 @@
 // ---- MQTT (deja "" si tu broker es anónimo) ----
 #define SECRET_MQTT_USER  ""
 #define SECRET_MQTT_PASS  ""
+
+// ---- Hammerspoon (X-Auth-Token del servidor en ~/.hammerspoon/init.lua) ----
+#define SECRET_HAMMERSPOON_TOKEN  "TU_TOKEN"
