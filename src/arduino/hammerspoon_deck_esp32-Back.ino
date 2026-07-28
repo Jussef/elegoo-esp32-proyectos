@@ -1,25 +1,14 @@
 /*
  * ═══════════════════════════════════════════════
  *  HAMMERSPOON DECK — ESP32 + OLED 0.96"
- *  Menú de 2 niveles (CATEGORÍA -> ITEM), estilo Batocera/Pip-Boy:
- *  al bajar/subir un item se resalta con su ícono 8x8 dentro de la
- *  caja de selección. Todo se maneja con el joystick (eje Y =
- *  navegar, click SW = ejecutar/entrar). El botón físico BACK
- *  (el mismo cableado que PIN_BTN_MENU en retro_terminal_esp32.ino,
- *  GPIO4) regresa a HOME desde cualquier pantalla.
+ *  Menú estilo Batocera/Pip-Boy: al bajar/subir un item se
+ *  muestra su ícono grande ("carátula") en el centro. Todo se
+ *  maneja con el joystick (eje Y = navegar, click SW = ejecutar).
  *  Al ejecutar hace POST a Hammerspoon: http://HOST:PORT/cmd
  *  con {"type":"action","payload":"<id>"} + header X-Auth-Token.
- *  El receptor IR queda siempre abierto (IrReceiver.decode() en el
- *  loop). La categoría "IR CODES" del menú muestra en vivo el último
- *  código recibido en el OLED, para leerlo apuntando el control y
- *  luego decidir qué botón dispara cada acción.
  * ═══════════════════════════════════════════════
- *  Librerías: Adafruit SSD1306, Adafruit GFX, IRremote (Armin
- *             Joachimsmeyer, v4.x)
+ *  Librerías: Adafruit SSD1306, Adafruit GFX
  *  Cableado: JOY_Y=35  JOY_SW=32  OLED SDA=21 SCL=22
- *            IR receptor: Y->GPIO16  R->3.3V  G->GND (sin emisor)
- *            Botón BACK/HOME: GPIO4 (mismo pin que PIN_BTN_MENU en
- *            retro_terminal_esp32.ino)
  * ═══════════════════════════════════════════════
  */
 
@@ -29,7 +18,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <IRremote.hpp>   // v4.x — receptor IR siempre abierto (ver loop())
 #include "secrets.h"   // SECRET_WIFI_SSID, SECRET_WIFI_PASS, SECRET_HAMMERSPOON_TOKEN
 
 // ---------- CONFIG ----------
@@ -44,10 +32,8 @@ const long GMT_OFFSET_SEC = -6 * 3600;   // CDMX
 const int  DST_OFFSET_SEC = 0;
 
 // ---------- PINES ----------
-#define PIN_JOY_Y     35
-#define PIN_JOY_SW    32
-#define PIN_IR_RECV   16   // pin Y del receptor IR (siempre escuchando, ver loop())
-#define PIN_BTN_HOME  4    // botón físico BACK (mismo GPIO que retro_terminal_esp32.ino) -> atajo directo a HOME
+#define PIN_JOY_Y   35
+#define PIN_JOY_SW  32
 
 // ---------- OLED ----------
 #define SCREEN_W 128
@@ -87,61 +73,6 @@ static const uint8_t PROGMEM ICON_LOCK[] = {       // LOCK
 static const uint8_t PROGMEM ICON_MOON[] = {       // SLEEP
   0b00111000, 0b01111000, 0b11110000, 0b11110000,
   0b11110000, 0b01111000, 0b00111100, 0b00000000
-};
-
-// ---- íconos de categoría ----
-static const uint8_t PROGMEM ICON_CODE[] = {        // CÓDIGO
-  0x00, 0x24, 0x42, 0x99, 0x99, 0x42, 0x24, 0x00
-};
-static const uint8_t PROGMEM ICON_MUSIC[] = {       // MEDIA
-  0x06, 0x05, 0x04, 0x04, 0x04, 0x3C, 0x42, 0x3C
-};
-static const uint8_t PROGMEM ICON_GEAR[] = {        // SISTEMA
-  0x24, 0x7E, 0xBD, 0xFF, 0xFF, 0xBD, 0x7E, 0x24
-};
-static const uint8_t PROGMEM ICON_GRID[] = {        // APPS
-  0xDB, 0xDB, 0x00, 0xDB, 0xDB, 0x00, 0xDB, 0xDB
-};
-static const uint8_t PROGMEM ICON_KEYBOARD[] = {    // TECLADO
-  0xFF, 0x81, 0xA5, 0x81, 0xA5, 0x81, 0xBD, 0xFF
-};
-static const uint8_t PROGMEM ICON_BACK[] = {        // < BACK
-  0x18, 0x30, 0x60, 0xFF, 0xFF, 0x60, 0x30, 0x18
-};
-static const uint8_t PROGMEM ICON_IR[] = {          // IR CODES
-  0x3C, 0x42, 0x5A, 0x42, 0x5A, 0x42, 0x7E, 0x3C
-};
-
-// ---- íconos de items ----
-static const uint8_t PROGMEM ICON_PACKAGE[] = {     // yarn start/install/deploy
-  0x18, 0x3C, 0xFF, 0xDB, 0xDB, 0xDB, 0xDB, 0xFF
-};
-static const uint8_t PROGMEM ICON_CLOUD[] = {       // firebase login/logout
-  0x00, 0x38, 0x7C, 0xFE, 0xFF, 0xFF, 0x7E, 0x00
-};
-static const uint8_t PROGMEM ICON_PLAY[] = {        // spotify play/pause
-  0x40, 0x60, 0x70, 0x78, 0x78, 0x70, 0x60, 0x40
-};
-static const uint8_t PROGMEM ICON_SKIP_NEXT[] = {   // spotify next
-  0x40, 0x60, 0x30, 0x18, 0x18, 0x30, 0x60, 0x40
-};
-static const uint8_t PROGMEM ICON_SKIP_PREV[] = {   // spotify prev
-  0x02, 0x06, 0x0C, 0x18, 0x18, 0x0C, 0x06, 0x02
-};
-static const uint8_t PROGMEM ICON_FOLDER[] = {      // finder
-  0x00, 0x78, 0xFF, 0x81, 0x81, 0x81, 0x81, 0xFF
-};
-static const uint8_t PROGMEM ICON_CALC[] = {        // calculadora
-  0xFF, 0xBD, 0x81, 0xAA, 0xAA, 0xAA, 0x81, 0xFF
-};
-static const uint8_t PROGMEM ICON_MAIL[] = {        // typear correo
-  0xFF, 0x81, 0xC3, 0xA5, 0x99, 0x81, 0x81, 0xFF
-};
-static const uint8_t PROGMEM ICON_COPY[] = {        // copiar
-  0x3C, 0x24, 0xFD, 0x85, 0x85, 0x85, 0xFD, 0x00
-};
-static const uint8_t PROGMEM ICON_PASTE[] = {       // pegar
-  0x3C, 0x3C, 0xFF, 0xBD, 0x81, 0xBD, 0x81, 0xFF
 };
 
 // ---------- IMAGENES ----------
@@ -235,88 +166,29 @@ const unsigned char TERMINAL [] PROGMEM = {
 const unsigned char BIKE [] PROGMEM = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xc0,0x00,0x01,0xc0,0x00,0x01,0xc0,0x00,0x1e,0x00,0x00,0x3e,0x00,0x00,0x7f,0x00,0x00,0xfb,0x00,0x01,0xf3,0xf0,0x01,0xf1,0xf0,0x00,0xf8,0x00,0x0c,0x3c,0x30,0x3f,0x9c,0xfe,0x71,0xcd,0xc7,0x60,0xcd,0x83,0xc0,0x4f,0x01,0xc0,0x6f,0x01,0x40,0x43,0x01,0x60,0xc1,0x83,0x71,0xc1,0xc7,0x3f,0x80,0xfe,0x04,0x00,0x10,0x00,0x00,0x00};
 
 // ---------- ESTADOS ----------
-enum Screen { SCREEN_HOME, SCREEN_MENU, SCREEN_DECK, SCREEN_IR };
+enum Screen { SCREEN_HOME, SCREEN_DECK };
 Screen currentScreen = SCREEN_HOME;
 
-// ---------- MENÚ (2 niveles: CATEGORÍA -> ITEM) ----------
+// ---------- MENÚ ----------
 struct DeckItem {
   const char* label;
   const char* id;          // nullptr = no dispara HTTP (ej. "< BACK")
   const uint8_t* icon;
 };
 
-enum CatKind { CAT_SUBMENU, CAT_IR_TEST, CAT_BACK_HOME };
-
-struct Category {
-  const char* label;
-  const uint8_t* icon;
-  CatKind kind;
-  const DeckItem* items;   // solo válido cuando kind == CAT_SUBMENU
-  int len;
+const DeckItem deckItems[] = {
+  { "VOLUME UP",   "volume_up",   ICON_ARROW_UP   },
+  { "VOLUME DOWN", "volume_down", ICON_ARROW_DOWN },
+  { "MUTE",        "mute_toggle", ICON_GLITCH     },
+  { "LOCK",        "lock",        ICON_LOCK       },
+  { "SLEEP",       "sleep",       ICON_MOON       },
+  { "< BACK",      nullptr,       ICON_TERMINAL   },
 };
-
-// -- Código: yarn + firebase + ssh --
-const DeckItem codigoItems[] = {
-  { "YARN START",     "yarn_start",       ICON_PACKAGE  },
-  { "YARN INSTALL",   "yarn_install",     ICON_PACKAGE  },
-  { "YARN DEPLOY",    "yarn_deploy",      ICON_PACKAGE  },
-  { "FIREBASE LOGOUT","firebase_logout",  ICON_CLOUD    },
-  { "FIREBASE LOGIN", "firebase_login",   ICON_CLOUD    },
-  { "SSH DEPREDADOR", "ssh_depredador",   ICON_TERMINAL },
-  { "< BACK",         nullptr,            ICON_BACK     },
-};
-
-// -- Media: reproducción y volumen de Spotify --
-const DeckItem mediaItems[] = {
-  { "PLAY / PAUSE",  "spotify_playpause", ICON_PLAY      },
-  { "NEXT TRACK",    "spotify_next",      ICON_SKIP_NEXT },
-  { "PREV TRACK",    "spotify_prev",      ICON_SKIP_PREV },
-  { "VOLUME UP",     "volume_up",         ICON_ARROW_UP  },
-  { "VOLUME DOWN",   "volume_down",       ICON_ARROW_DOWN},
-  { "MUTE",          "mute_toggle",       ICON_GLITCH    },
-  { "< BACK",        nullptr,             ICON_BACK      },
-};
-
-// -- Sistema: sleep / bloqueo del Mac --
-const DeckItem sistemaItems[] = {
-  { "SLEEP", "sleep", ICON_MOON },
-  { "LOCK",  "lock",  ICON_LOCK },
-  { "< BACK", nullptr, ICON_BACK },
-};
-
-// -- Apps: abrir aplicaciones --
-const DeckItem appsItems[] = {
-  { "VSCODE",     "open_vscode",     ICON_CODE   },
-  { "FINDER",     "open_finder",     ICON_FOLDER },
-  { "CALCULATOR", "open_calculator", ICON_CALC   },
-  { "< BACK",     nullptr,           ICON_BACK   },
-};
-
-// -- Teclado: escribir correo, copiar, pegar --
-const DeckItem tecladoItems[] = {
-  { "TYPE EMAIL", "type_email",     ICON_MAIL  },  // jussef.daniel@gmail.com (lo escribe Hammerspoon)
-  { "COPY",       "keyboard_copy",  ICON_COPY  },
-  { "PASTE",      "keyboard_paste", ICON_PASTE },
-  { "< BACK",     nullptr,          ICON_BACK  },
-};
-
-const Category categories[] = {
-  { "CODIGO",   ICON_CODE,     CAT_SUBMENU,   codigoItems,  sizeof(codigoItems)  / sizeof(codigoItems[0])  },
-  { "MEDIA",    ICON_MUSIC,    CAT_SUBMENU,   mediaItems,   sizeof(mediaItems)   / sizeof(mediaItems[0])   },
-  { "SISTEMA",  ICON_GEAR,     CAT_SUBMENU,   sistemaItems, sizeof(sistemaItems) / sizeof(sistemaItems[0]) },
-  { "APPS",     ICON_GRID,     CAT_SUBMENU,   appsItems,    sizeof(appsItems)    / sizeof(appsItems[0])    },
-  { "TECLADO",  ICON_KEYBOARD, CAT_SUBMENU,   tecladoItems, sizeof(tecladoItems) / sizeof(tecladoItems[0]) },
-  { "IR CODES", ICON_IR,       CAT_IR_TEST,   nullptr,      0                                              },
-  { "< BACK",   ICON_BACK,     CAT_BACK_HOME, nullptr,      0                                              },
-};
-const int CAT_LEN = sizeof(categories) / sizeof(categories[0]);
-
-int menuIndex = 0;        // índice dentro de categories[]
-int deckIndex = 0;        // índice dentro de categories[currentCategory].items
-int currentCategory = 0;
+const int DECK_LEN = sizeof(deckItems) / sizeof(deckItems[0]);
+int deckIndex = 0;
 
 // ---------- INPUT ----------
-unsigned long lastBtn = 0, lastJoy = 0, lastHomeBtn = 0;
+unsigned long lastBtn = 0, lastJoy = 0;
 const unsigned long BTN_DEBOUNCE = 250;
 const unsigned long JOY_REPEAT  = 180;
 
@@ -328,7 +200,6 @@ unsigned long lastBlink = 0;
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_JOY_SW, INPUT_PULLUP);
-  pinMode(PIN_BTN_HOME, INPUT_PULLUP);   // botón BOOT del ESP32 -> atajo a HOME
 
   Wire.begin(21, 22);
   Wire.setClock(400000);
@@ -336,10 +207,6 @@ void setup() {
     Serial.println("OLED no encontrado :(");
     while (true) delay(100);
   }
-
-  // Receptor IR: se deja siempre abierto (ver loop()) para detectar
-  // los botones de un control remoto.
-  IrReceiver.begin(PIN_IR_RECV, DISABLE_LED_FEEDBACK);
 
   bootSplash();
   connectWiFi();
@@ -349,7 +216,6 @@ void setup() {
 
 // ═══════════════ LOOP ═══════════════
 void loop() {
-  pollIR();
   handleInput();
 
   if (millis() - lastBlink > 500) {
@@ -357,55 +223,20 @@ void loop() {
     lastBlink = millis();
   }
 
-  if (currentScreen == SCREEN_HOME)       drawHome();
-  else if (currentScreen == SCREEN_MENU)  drawMenu();
-  else if (currentScreen == SCREEN_IR)    drawIrTest();
-  else                                    drawDeck();
+  if (currentScreen == SCREEN_HOME) drawHome();
+  else                              drawDeck();
 
   delay(30);
 }
 
-// ═══════════════ IR (siempre abierto) ═══════════════
-unsigned long lastIrCode = 0;      // último código recibido (0 = ninguno aún)
-unsigned long lastIrCodeAt = 0;
-
-void pollIR() {
-  if (IrReceiver.decode()) {
-    lastIrCode   = IrReceiver.decodedIRData.decodedRawData;
-    lastIrCodeAt = millis();
-    Serial.print(F("[IR] code: 0x"));
-    Serial.println(lastIrCode, HEX);
-    IrReceiver.resume();   // vuelve a quedar abierto para el siguiente botón
-  }
-}
-
 // ═══════════════ INPUT ═══════════════
 void handleInput() {
-  // Botón BOOT del ESP32: atajo directo a HOME desde cualquier pantalla
-  bool homeBtn = (digitalRead(PIN_BTN_HOME) == LOW);
-  if (homeBtn && millis() - lastHomeBtn > BTN_DEBOUNCE) {
-    lastHomeBtn = millis();
-    if (currentScreen != SCREEN_HOME) {
-      currentScreen = SCREEN_HOME;
-      return;
-    }
-  }
-
   if (currentScreen == SCREEN_HOME) {
     bool sw = (digitalRead(PIN_JOY_SW) == LOW);
     if (sw && millis() - lastBtn > BTN_DEBOUNCE) {
       lastBtn = millis();
-      currentScreen = SCREEN_MENU;
-      menuIndex = 0;
-    }
-    return;
-  }
-
-  if (currentScreen == SCREEN_IR) {   // pantalla de códigos IR: SW = volver al menú
-    bool sw = (digitalRead(PIN_JOY_SW) == LOW);
-    if (sw && millis() - lastBtn > BTN_DEBOUNCE) {
-      lastBtn = millis();
-      currentScreen = SCREEN_MENU;
+      currentScreen = SCREEN_DECK;
+      deckIndex = 0;
     }
     return;
   }
@@ -416,12 +247,7 @@ void handleInput() {
     if (y < 1000)      dir = -1;
     else if (y > 3000) dir = +1;
     if (dir != 0) {
-      if (currentScreen == SCREEN_MENU) {
-        menuIndex = (menuIndex + dir + CAT_LEN) % CAT_LEN;          // circular
-      } else {
-        int len = categories[currentCategory].len;
-        deckIndex = (deckIndex + dir + len) % len;                  // circular
-      }
+      deckIndex = (deckIndex + dir + DECK_LEN) % DECK_LEN;   // circular, como el menú de referencia
       lastJoy = millis();
     }
   }
@@ -429,26 +255,10 @@ void handleInput() {
   bool sw = (digitalRead(PIN_JOY_SW) == LOW);
   if (sw && millis() - lastBtn > BTN_DEBOUNCE) {
     lastBtn = millis();
-    if (currentScreen == SCREEN_MENU) {
-      switch (categories[menuIndex].kind) {
-        case CAT_BACK_HOME:
-          currentScreen = SCREEN_HOME;
-          break;
-        case CAT_IR_TEST:
-          currentScreen = SCREEN_IR;
-          break;
-        case CAT_SUBMENU:
-          currentCategory = menuIndex;
-          deckIndex = 0;
-          currentScreen = SCREEN_DECK;
-          break;
-      }
-    } else {   // SCREEN_DECK
-      if (categories[currentCategory].items[deckIndex].id == nullptr) {   // "< BACK" -> MENU
-        currentScreen = SCREEN_MENU;
-      } else {
-        fireAction(deckIndex);
-      }
+    if (deckItems[deckIndex].id == nullptr) {   // "< BACK"
+      currentScreen = SCREEN_HOME;
+    } else {
+      fireAction(deckIndex);
     }
   }
 }
@@ -464,9 +274,7 @@ void fireResultFlash(bool ok) {
 }
 
 void fireAction(int idx) {
-  const DeckItem* items = categories[currentCategory].items;
-  int len = categories[currentCategory].len;
-  if (idx < 0 || idx >= len) return;
+  if (idx < 0 || idx >= DECK_LEN) return;
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[HAMMERSPOON] sin wifi");
@@ -483,119 +291,77 @@ void fireAction(int idx) {
   http.addHeader("X-Auth-Token", HAMMERSPOON_TOKEN);
 
   char body[64];
-  snprintf(body, sizeof(body), "{\"type\":\"action\",\"payload\":\"%s\"}", items[idx].id);
+  snprintf(body, sizeof(body), "{\"type\":\"action\",\"payload\":\"%s\"}", deckItems[idx].id);
 
   int code = http.POST(body);
   http.end();
 
-  Serial.printf("[HAMMERSPOON] %s -> %d\n", items[idx].id, code);
+  Serial.printf("[HAMMERSPOON] %s -> %d\n", deckItems[idx].id, code);
   fireResultFlash(code == 200);
 }
 
-// ═══════════════ ACCESORES (para la lista genérica) ═══════════════
-const char*    catLabelAt(int i)  { return categories[i].label; }
-const uint8_t* catIconAt(int i)   { return categories[i].icon;  }
-const char*    itemLabelAt(int i) { return categories[currentCategory].items[i].label; }
-const uint8_t* itemIconAt(int i)  { return categories[currentCategory].items[i].icon;  }
+// ═══════════════ BITMAP ESCALADO (carátula grande) ═══════════════
+void drawBitmapScaled(int16_t x, int16_t y, const uint8_t* bitmap, int w, int h, int scale, uint16_t color) {
+  int byteWidth = (w + 7) / 8;
+  for (int j = 0; j < h; j++) {
+    for (int i = 0; i < w; i++) {
+      if (pgm_read_byte(bitmap + j * byteWidth + i / 8) & (0x80 >> (i & 7))) {
+        display.fillRect(x + i * scale, y + j * scale, scale, scale, color);
+      }
+    }
+  }
+}
 
 // ═══════════════ PANTALLA (estilo Flipper Zero / upir) ═══════════════
-// Header + 3 filas: anterior (chico) / seleccionado (resaltado) /
-// siguiente (chico), ícono 8x8 nativo (sin escalar, para que quepa
-// bien dentro de la caja de selección) + label, scrollbar a la derecha.
-// Sirve tanto para el menú de categorías (SCREEN_MENU) como para los
-// items dentro de una categoría (SCREEN_DECK).
+// Header (igual al resto de las pantallas) + 3 filas: anterior (chico) /
+// seleccionado (resaltado) / siguiente (chico), ícono 16x16 (nuestros
+// íconos 8x8 escalados x2) + label, scrollbar a la derecha.
 const int DECK_LIST_TOP = 14;   // debajo del header, deja 50px para la lista
 
-void drawList(const char* headerLabel, const uint8_t* headerIcon,
-              int len, int index,
-              const char* (*labelOf)(int), const uint8_t* (*iconOf)(int)) {
+void drawDeck() {
   display.clearDisplay();
 
-  // -- header: en qué nivel del menú estamos --
+  // -- header: qué menú es (útil cuando haya submenús) --
   display.fillRect(0, 0, 128, 14, SSD1306_WHITE);
   display.setTextColor(SSD1306_BLACK);
   display.setTextSize(1);
-  display.drawBitmap(3, 3, headerIcon, 8, 8, SSD1306_BLACK);
+  display.drawBitmap(3, 3, ICON_TERMINAL, 8, 8, SSD1306_BLACK);
   display.setCursor(13, 3);
-  display.print(headerLabel);
+  display.print(F("DECK"));
   display.setCursor(98, 3);
-  display.print(index + 1);
+  display.print(deckIndex + 1);
   display.print("/");
-  display.print(len);
+  display.print(DECK_LEN);
 
   display.setTextColor(SSD1306_WHITE);
 
-  int prevIdx = (index - 1 + len) % len;
-  int nextIdx = (index + 1) % len;
+  int prevIdx = (deckIndex - 1 + DECK_LEN) % DECK_LEN;
+  int nextIdx = (deckIndex + 1) % DECK_LEN;
+
+  // -- caja de selección alrededor del item actual --
+  display.drawRoundRect(0, DECK_LIST_TOP + 15, 120, 18, 3, SSD1306_WHITE);
 
   // -- item anterior --
-  display.drawBitmap(4, DECK_LIST_TOP + 4, iconOf(prevIdx), 8, 8, SSD1306_WHITE);
-  display.setCursor(16, DECK_LIST_TOP + 4);
-  display.print(labelOf(prevIdx));
+  drawBitmapScaled(4, DECK_LIST_TOP + 1, deckItems[prevIdx].icon, 8, 8, 2, SSD1306_WHITE);
+  display.setCursor(25, DECK_LIST_TOP + 5);
+  display.print(deckItems[prevIdx].label);
 
-  // -- caja de selección + item actual ("negrita" con doble trazo) --
-  display.drawRoundRect(0, DECK_LIST_TOP + 16, 120, 16, 3, SSD1306_WHITE);
-  display.drawBitmap(4, DECK_LIST_TOP + 20, iconOf(index), 8, 8, SSD1306_WHITE);
-  display.setCursor(16, DECK_LIST_TOP + 20);
-  display.print(labelOf(index));
-  display.setCursor(17, DECK_LIST_TOP + 20);
-  display.print(labelOf(index));
+  // -- item seleccionado ("negrita" con doble trazo) --
+  drawBitmapScaled(4, DECK_LIST_TOP + 17, deckItems[deckIndex].icon, 8, 8, 2, SSD1306_WHITE);
+  display.setCursor(25, DECK_LIST_TOP + 21);
+  display.print(deckItems[deckIndex].label);
+  display.setCursor(26, DECK_LIST_TOP + 21);
+  display.print(deckItems[deckIndex].label);
 
   // -- item siguiente --
-  display.drawBitmap(4, DECK_LIST_TOP + 36, iconOf(nextIdx), 8, 8, SSD1306_WHITE);
-  display.setCursor(16, DECK_LIST_TOP + 36);
-  display.print(labelOf(nextIdx));
+  drawBitmapScaled(4, DECK_LIST_TOP + 33, deckItems[nextIdx].icon, 8, 8, 2, SSD1306_WHITE);
+  display.setCursor(25, DECK_LIST_TOP + 37);
+  display.print(deckItems[nextIdx].label);
 
   // -- scrollbar (solo en el área de la lista, no tapa el header) --
   display.drawRect(122, DECK_LIST_TOP, 6, SCREEN_H - DECK_LIST_TOP, SSD1306_WHITE);
-  int handleH = (SCREEN_H - DECK_LIST_TOP) / len;
-  display.fillRect(123, DECK_LIST_TOP + handleH * index, 4, handleH, SSD1306_WHITE);
-
-  display.display();
-}
-
-void drawMenu() {   // nivel 1: categorías
-  drawList("MENU", ICON_GRID, CAT_LEN, menuIndex, catLabelAt, catIconAt);
-}
-
-void drawDeck() {   // nivel 2: items de la categoría actual
-  drawList(categories[currentCategory].label, categories[currentCategory].icon,
-           categories[currentCategory].len, deckIndex, itemLabelAt, itemIconAt);
-}
-
-// ═══════════════ PANTALLA IR CODES ═══════════════
-// Apunta el control y presiona un botón: el código queda en pantalla
-// para copiarlo y decidir qué acción del menú va a disparar.
-void drawIrTest() {
-  display.clearDisplay();
-
-  display.fillRect(0, 0, 128, 14, SSD1306_WHITE);
-  display.setTextColor(SSD1306_BLACK);
-  display.setTextSize(1);
-  display.drawBitmap(3, 3, ICON_IR, 8, 8, SSD1306_BLACK);
-  display.setCursor(13, 3);
-  display.print(F("IR CODES"));
-
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(4, 20);
-  display.print(F("Apunta el control"));
-  display.setCursor(4, 30);
-  display.print(F("y presiona un boton"));
-
-  display.drawFastHLine(0, 40, 128, SSD1306_WHITE);
-
-  display.setCursor(4, 48);
-  display.print(F("Codigo: "));
-  if (lastIrCode == 0) {
-    display.print(F("---"));
-  } else {
-    display.print(F("0x"));
-    display.print(lastIrCode, HEX);
-    if (millis() - lastIrCodeAt < 700) display.fillRect(118, 48, 6, 8, SSD1306_WHITE);  // parpadeo al llegar uno nuevo
-  }
-
-  display.setCursor(4, 58);
-  display.print(F("SW = volver"));
+  int handleH = (SCREEN_H - DECK_LIST_TOP) / DECK_LEN;
+  display.fillRect(123, DECK_LIST_TOP + handleH * deckIndex, 4, handleH, SSD1306_WHITE);
 
   display.display();
 }
